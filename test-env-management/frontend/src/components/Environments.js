@@ -19,6 +19,7 @@ export default function Environments({ user }) {
     status: 'available'
   });
   const [submitting, setSubmitting] = useState(false);
+  const [editingEnvId, setEditingEnvId] = useState(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedEnv, setSelectedEnv] = useState(null);
   const [configs, setConfigs] = useState([]);
@@ -104,7 +105,20 @@ export default function Environments({ user }) {
     }
   };
 
-  const handleCreate = async (e) => {
+  const openEditModal = (env) => {
+    // Populate form with existing environment details for editing
+    setEditingEnvId(env.id);
+    setFormData({
+      name: env.name || '',
+      type: env.type || 'dev',
+      description: env.description || '',
+      url: env.url || '',
+      status: env.status || 'available',
+    });
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.type) {
       toast.error('Name and type are required');
@@ -112,13 +126,19 @@ export default function Environments({ user }) {
     }
     try {
       setSubmitting(true);
-      await environmentAPI.create(formData);
-      toast.success('Environment created successfully');
+      if (editingEnvId) {
+        await environmentAPI.update(editingEnvId, formData);
+        toast.success('Environment updated successfully');
+      } else {
+        await environmentAPI.create(formData);
+        toast.success('Environment created successfully');
+      }
       setShowModal(false);
+      setEditingEnvId(null);
       setFormData({ name: '', type: 'dev', description: '', url: '', status: 'available' });
       fetchEnvironments();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to create environment');
+      toast.error(error.response?.data?.error || 'Failed to save environment');
     } finally {
       setSubmitting(false);
     }
@@ -143,7 +163,7 @@ export default function Environments({ user }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
             <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-lg font-semibold">Create Environment</h3>
+              <h3 className="text-lg font-semibold">{editingEnvId ? 'Edit Environment' : 'Create Environment'}</h3>
               <button
                 onClick={() => setShowModal(false)}
                 className="text-gray-500 hover:text-gray-700"
@@ -151,7 +171,7 @@ export default function Environments({ user }) {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                 <input
@@ -213,7 +233,7 @@ export default function Environments({ user }) {
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => { setShowModal(false); setEditingEnvId(null); setFormData({ name: '', type: 'dev', description: '', url: '', status: 'available' }); }}
                   className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
@@ -223,7 +243,7 @@ export default function Environments({ user }) {
                   disabled={submitting}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {submitting ? 'Creating...' : 'Create'}
+                  {submitting ? (editingEnvId ? 'Saving...' : 'Creating...') : (editingEnvId ? 'Save' : 'Create')}
                 </button>
               </div>
             </form>
@@ -290,7 +310,7 @@ export default function Environments({ user }) {
                 </button>
                 {(user.role === 'admin' || user.role === 'manager') && (
                   <button
-                    onClick={() => setShowModal(true)}
+                    onClick={() => openEditModal(env)}
                     className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
                   >
                     Edit Environment
