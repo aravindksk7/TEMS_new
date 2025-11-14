@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Status badges */
+.status-available {
+  @apply bg-green-100 text-green-800 border-green-200;
+}
+
+.status-in-use {
+  @apply bg-blue-100 text-blue-800 border-blue-200;
+}
+
+.status-maintenance {
+  @apply bg-yellow-100 text-yellow-800 border-yellow-200;
+}
+
+.status-provisioning {
+  @apply bg-purple-100 text-purple-800 border-purple-200;
+}
+
+.status-decommissioned {
+  @apply bg-gray-100 text-gray-800 border-gray-200;
+}
+
+.status-pending {
+  @apply bg-yellow-100 text-yellow-800 border-yellow-200;
+}
+
+.status-approved {
+  @apply bg-green-100 text-green-800 border-green-200;
+}
+
+.status-active {
+  @apply bg-blue-100 text-blue-800 border-blue-200;
+}
+
+.status-completed {
+  @apply bg-gray-100 text-gray-800 border-gray-200;
+}
+
+.status-cancelled {
+  @apply bg-red-100 text-red-800 border-red-200;
+}
+
+.status-rejected {
+  @apply bg-red-100 text-red-800 border-red-200;
+}
+
+/* Priority badges */
+.priority-low {
+  @apply bg-gray-100 text-gray-800;
+}
+
+.priority-medium {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.priority-high {
+  @apply bg-orange-100 text-orange-800;
+}
+
+.priority-critical {
+  @apply bg-red-100 text-red-800;
+}

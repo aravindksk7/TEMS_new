@@ -1,19 +1,21 @@
+version: '3.8'
+
 services:
   mysql:
     image: mysql:8.0
-    container_name: tems_mysql
+    container_name: tem_mysql
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: tems_db
-      MYSQL_USER: tems_user
-      MYSQL_PASSWORD: tems_password
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: test_env_management
+      MYSQL_USER: tem_user
+      MYSQL_PASSWORD: tem_password
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
-      - tems_network
+      - tem_network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 20s
@@ -23,15 +25,15 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: tems_backend
+    container_name: tem_backend
     environment:
       NODE_ENV: production
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_USER: tems_user
-      DB_PASSWORD: tems_password
-      DB_NAME: tems_db
-      JWT_SECRET: your-secret-key-change-in-production
+      DB_NAME: test_env_management
+      DB_USER: tem_user
+      DB_PASSWORD: tem_password
+      JWT_SECRET: your_jwt_secret_key_change_in_production
       PORT: 5000
     ports:
       - "5000:5000"
@@ -39,7 +41,7 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - tems_network
+      - tem_network
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -48,23 +50,19 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: tems_frontend
+    container_name: tem_frontend
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:5000
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api
     ports:
       - "3000:3000"
     depends_on:
       - backend
     networks:
-      - tems_network
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
+      - tem_network
+
+networks:
+  tem_network:
+    driver: bridge
 
 volumes:
   mysql_data:
-
-networks:
-  tems_network:
-    driver: bridge

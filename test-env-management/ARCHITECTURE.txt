@@ -1,0 +1,282 @@
+# Test Environment Management System - Architecture
+
+## System Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│                           CLIENT BROWSER                                    │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                      │  │
+│  │                    NEXT.JS FRONTEND (Port 3000)                      │  │
+│  │                                                                      │  │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │  │
+│  │  │  Dashboard   │  │ Environments │  │   Bookings   │             │  │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘             │  │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │  │
+│  │  │  Monitoring  │  │  Analytics   │  │   Settings   │             │  │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘             │  │
+│  │                                                                      │  │
+│  │  React Components + Tailwind CSS + Socket.io Client                 │  │
+│  │                                                                      │  │
+│  └────────────┬─────────────────────────────────────┬──────────────────┘  │
+│               │                                      │                     │
+│               │ HTTP/HTTPS                           │ WebSocket           │
+│               │ (REST API)                           │ (Real-time)         │
+│               │                                      │                     │
+└───────────────┼──────────────────────────────────────┼─────────────────────┘
+                │                                      │
+                │                                      │
+┌───────────────┼──────────────────────────────────────┼─────────────────────┐
+│               │                                      │                     │
+│               ▼                                      ▼                     │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                    │  │
+│  │              NODE.JS + EXPRESS BACKEND (Port 5000)                 │  │
+│  │                                                                    │  │
+│  │  ┌──────────────────────────────────────────────────────────────┐ │  │
+│  │  │                     API ROUTES                               │ │  │
+│  │  │  /auth  /environments  /bookings  /monitoring  /analytics    │ │  │
+│  │  └──────────────────────────────────────────────────────────────┘ │  │
+│  │                                                                    │  │
+│  │  ┌──────────────────────────────────────────────────────────────┐ │  │
+│  │  │                    CONTROLLERS                                │ │  │
+│  │  │  • authController       • bookingController                   │ │  │
+│  │  │  • environmentController • monitoringController               │ │  │
+│  │  │  • analyticsController  • notificationController              │ │  │
+│  │  └──────────────────────────────────────────────────────────────┘ │  │
+│  │                                                                    │  │
+│  │  ┌──────────────────────────────────────────────────────────────┐ │  │
+│  │  │                     MIDDLEWARE                                │ │  │
+│  │  │  • JWT Authentication   • Authorization (RBAC)                │ │  │
+│  │  │  • Helmet Security      • CORS                                │ │  │
+│  │  └──────────────────────────────────────────────────────────────┘ │  │
+│  │                                                                    │  │
+│  │  ┌──────────────────────────────────────────────────────────────┐ │  │
+│  │  │                   SOCKET.IO SERVER                            │ │  │
+│  │  │  Real-time event broadcasting                                 │ │  │
+│  │  │  • metric_update  • conflict_detected  • booking_completed    │ │  │
+│  │  └──────────────────────────────────────────────────────────────┘ │  │
+│  │                                                                    │  │
+│  │  ┌──────────────────────────────────────────────────────────────┐ │  │
+│  │  │                   AUTOMATED JOBS (Cron)                       │ │  │
+│  │  │  • Conflict Detection (5 min)  • Booking Updates (1 min)     │ │  │
+│  │  │  • Reminders (5 min)           • Metrics Collection (2 min)  │ │  │
+│  │  └──────────────────────────────────────────────────────────────┘ │  │
+│  │                                                                    │  │
+│  └──────────────────────────┬─────────────────────────────────────────┘  │
+│                             │                                            │
+│                             │ MySQL2 Driver                              │
+│                             │                                            │
+└─────────────────────────────┼────────────────────────────────────────────┘
+                              │
+                              │
+┌─────────────────────────────┼────────────────────────────────────────────┐
+│                             │                                            │
+│                             ▼                                            │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                    │  │
+│  │                  MYSQL 8.0 DATABASE (Port 3306)                    │  │
+│  │                                                                    │  │
+│  │  ┌──────────────────────────────────────────────────────────────┐ │  │
+│  │  │                    CORE TABLES                                │ │  │
+│  │  │  • users              • environments    • bookings            │ │  │
+│  │  │  • conflicts          • activities      • notifications       │ │  │
+│  │  │  • comments           • teams           • team_members        │ │  │
+│  │  │  • environment_metrics • environment_permissions              │ │  │
+│  │  └──────────────────────────────────────────────────────────────┘ │  │
+│  │                                                                    │  │
+│  │  ┌──────────────────────────────────────────────────────────────┐ │  │
+│  │  │                    FEATURES                                   │ │  │
+│  │  │  • Foreign Key Constraints  • Indexes for Performance         │ │  │
+│  │  │  • JSON Columns             • Cascading Deletes               │ │  │
+│  │  │  • Automatic Timestamps     • ENUM Types                      │ │  │
+│  │  └──────────────────────────────────────────────────────────────┘ │  │
+│  │                                                                    │  │
+│  │  ┌──────────────────────────────────────────────────────────────┐ │  │
+│  │  │                PERSISTENT VOLUME                              │ │  │
+│  │  │  Docker volume for data persistence                           │ │  │
+│  │  └──────────────────────────────────────────────────────────────┘ │  │
+│  │                                                                    │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+│                                                                           │
+└───────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+                          DATA FLOW EXAMPLES
+
+═══════════════════════════════════════════════════════════════════════════
+
+1. USER LOGIN
+   ────────────
+   Browser → POST /api/auth/login → Backend validates credentials
+   → Database query → Generate JWT → Return token + user data
+   → Store in localStorage → Auto-attach to future requests
+
+
+2. CREATE BOOKING (with Conflict Detection)
+   ────────────────────────────────────────
+   Browser → POST /api/bookings → Backend validates input
+   → Check for conflicting bookings in Database
+   → If conflicts found: Create conflict records
+   → Create booking → Send notifications to affected users
+   → WebSocket broadcast to environment watchers
+   → Return booking details + conflicts
+
+
+3. REAL-TIME MONITORING
+   ──────────────────────
+   Cron Job (every 2 min) → Generate metrics → Insert to database
+   → Check if critical → Create notifications if needed
+   → WebSocket broadcast metric_update event
+   → Frontend receives update → Dashboard refreshes automatically
+
+
+4. APPROVAL WORKFLOW
+   ──────────────────
+   Manager → PATCH /api/bookings/:id/status {approved}
+   → Backend validates role → Update booking status
+   → If approved: Schedule to activate at start_time
+   → Create notification for booking owner
+   → Log activity → Return success
+
+
+5. AUTOMATED BOOKING LIFECYCLE
+   ───────────────────────────
+   Cron (every 1 min) checks:
+   → Approved bookings with start_time <= now
+      → Set status = 'active', update environment
+   → Active bookings with end_time <= now
+      → Set status = 'completed', free environment
+      → WebSocket broadcast booking_completed
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+                       DOCKER CONTAINER LAYOUT
+
+═══════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          Docker Network: tem_network                    │
+│                                                                         │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    │
+│  │   Frontend      │    │    Backend      │    │     MySQL       │    │
+│  │   Container     │    │   Container     │    │   Container     │    │
+│  │                 │    │                 │    │                 │    │
+│  │  Next.js        │◄──►│  Node.js        │◄──►│  MySQL 8.0      │    │
+│  │  Port: 3000     │    │  Port: 5000     │    │  Port: 3306     │    │
+│  │                 │    │                 │    │                 │    │
+│  │  Volume:        │    │  Volume:        │    │  Volume:        │    │
+│  │  ./frontend     │    │  ./backend      │    │  mysql_data     │    │
+│  │  (dev mode)     │    │  (dev mode)     │    │  (persistent)   │    │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘    │
+│         │                       │                       │              │
+│         │                       │                       │              │
+│         └───────────────────────┴───────────────────────┘              │
+│                                 │                                      │
+└─────────────────────────────────┼──────────────────────────────────────┘
+                                  │
+                                  │
+                         Host Machine Ports
+                    3000 → Frontend (Browser)
+                    5000 → Backend API
+                    3306 → MySQL (if needed)
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+                          SECURITY LAYERS
+
+═══════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Layer 1: Network (Docker)                                              │
+│  • Container isolation                                                  │
+│  • Private network communication                                        │
+│  • Port exposure control                                                │
+└─────────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Layer 2: Application (Express)                                         │
+│  • Helmet.js security headers                                           │
+│  • CORS policy enforcement                                              │
+│  • Rate limiting (ready)                                                │
+│  • Input validation                                                     │
+└─────────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Layer 3: Authentication (JWT)                                          │
+│  • Token-based auth (24h expiry)                                        │
+│  • Bcrypt password hashing (10 rounds)                                  │
+│  • Protected routes                                                     │
+│  • Session validation                                                   │
+└─────────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Layer 4: Authorization (RBAC)                                          │
+│  • Role-based access control                                            │
+│  • Admin, Manager, Developer, Tester                                    │
+│  • Resource-level permissions                                           │
+│  • Team-based access                                                    │
+└─────────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Layer 5: Database                                                      │
+│  • Parameterized queries (SQL injection prevention)                     │
+│  • Foreign key constraints                                              │
+│  • Cascading deletes                                                    │
+│  • Connection pooling                                                   │
+└─────────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Layer 6: Audit & Monitoring                                            │
+│  • Activity logging (all actions)                                       │
+│  • Error logging                                                        │
+│  • Access logs                                                          │
+│  • Health monitoring                                                    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+                       KEY INTEGRATIONS
+
+═══════════════════════════════════════════════════════════════════════════
+
+WebSocket (Socket.io)
+├── Client connects on page load
+├── Joins environment-specific rooms
+├── Receives real-time updates
+└── Automatic reconnection on disconnect
+
+Cron Jobs (node-cron)
+├── Conflict Detection → Every 5 minutes
+├── Booking Status Updates → Every minute
+├── Booking Reminders → Every 5 minutes
+└── Metrics Collection → Every 2 minutes
+
+Authentication Flow
+├── Login → Generate JWT (24h)
+├── Token in Authorization header
+├── Middleware validates on each request
+└── Refresh on expiry (manual login)
+
+Database Connection
+├── Connection pool (10 connections)
+├── Health check before startup
+├── Automatic reconnection
+└── Prepared statements (security)
+
+
+═══════════════════════════════════════════════════════════════════════════
+                               END
+═══════════════════════════════════════════════════════════════════════════
