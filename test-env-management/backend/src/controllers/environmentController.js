@@ -252,6 +252,150 @@ const environmentController = {
       res.status(500).json({ error: 'Failed to fetch statistics' });
     }
   }
+
+  ,
+
+  // Get configurations for an environment
+  getConfigurations: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const [envs] = await db.query('SELECT configuration FROM environments WHERE id = ?', [id]);
+      if (envs.length === 0) return res.status(404).json({ error: 'Environment not found' });
+      let configs = [];
+      try {
+        const raw = envs[0].configuration;
+        if (!raw) configs = [];
+        else if (typeof raw === 'string') configs = JSON.parse(raw);
+        else configs = raw;
+        if (!Array.isArray(configs)) configs = [];
+      } catch (err) {
+        configs = [];
+      }
+      res.json({ configurations: configs });
+    } catch (error) {
+      console.error('Get configurations error:', error);
+      res.status(500).json({ error: 'Failed to fetch configurations' });
+    }
+  },
+
+  // Create a configuration item for an environment
+  createConfiguration: async (req, res) => {
+    try {
+      const { id } = req.params; // environment id
+      const { category, name, settings } = req.body;
+      if (!category || !name) return res.status(400).json({ error: 'Category and name are required' });
+
+      const [envs] = await db.query('SELECT configuration FROM environments WHERE id = ?', [id]);
+      if (envs.length === 0) return res.status(404).json({ error: 'Environment not found' });
+
+      let configs = [];
+      try {
+        const raw = envs[0].configuration;
+        if (!raw) configs = [];
+        else if (typeof raw === 'string') configs = JSON.parse(raw);
+        else configs = raw;
+        if (!Array.isArray(configs)) configs = [];
+      } catch (err) {
+        configs = [];
+      }
+
+      const newConfig = {
+        id: Date.now(),
+        category,
+        name,
+        settings: settings || {},
+        created_by: req.user.id,
+        created_at: new Date()
+      };
+
+      configs.push(newConfig);
+
+      await db.query('UPDATE environments SET configuration = ? WHERE id = ?', [JSON.stringify(configs), id]);
+
+      await db.query('INSERT INTO activities (user_id, entity_type, entity_id, action, description) VALUES (?, ?, ?, ?, ?)',
+        [req.user.id, 'environment', id, 'add_configuration', `Added configuration ${name} (${category})`]);
+
+      res.status(201).json({ configuration: newConfig });
+    } catch (error) {
+      console.error('Create configuration error:', error);
+      res.status(500).json({ error: 'Failed to create configuration' });
+    }
+  },
+
+  // Update a specific configuration item
+  updateConfiguration: async (req, res) => {
+    try {
+      const { id, configId } = req.params;
+      const { category, name, settings } = req.body;
+
+      const [envs] = await db.query('SELECT configuration FROM environments WHERE id = ?', [id]);
+      if (envs.length === 0) return res.status(404).json({ error: 'Environment not found' });
+
+      let configs = [];
+      try {
+        const raw = envs[0].configuration;
+        if (!raw) configs = [];
+        else if (typeof raw === 'string') configs = JSON.parse(raw);
+        else configs = raw;
+        if (!Array.isArray(configs)) configs = [];
+      } catch (err) {
+        configs = [];
+      }
+
+      const idx = configs.findIndex((c) => String(c.id) === String(configId));
+      if (idx === -1) return res.status(404).json({ error: 'Configuration not found' });
+
+      if (category) configs[idx].category = category;
+      if (name) configs[idx].name = name;
+      if (settings) configs[idx].settings = settings;
+      configs[idx].updated_at = new Date();
+
+      await db.query('UPDATE environments SET configuration = ? WHERE id = ?', [JSON.stringify(configs), id]);
+
+      await db.query('INSERT INTO activities (user_id, entity_type, entity_id, action, description) VALUES (?, ?, ?, ?, ?)',
+        [req.user.id, 'environment', id, 'update_configuration', `Updated configuration ${configs[idx].name}`]);
+
+      res.json({ configuration: configs[idx] });
+    } catch (error) {
+      console.error('Update configuration error:', error);
+      res.status(500).json({ error: 'Failed to update configuration' });
+    }
+  },
+
+  // Delete a configuration item
+  deleteConfiguration: async (req, res) => {
+    try {
+      const { id, configId } = req.params;
+      const [envs] = await db.query('SELECT configuration FROM environments WHERE id = ?', [id]);
+      if (envs.length === 0) return res.status(404).json({ error: 'Environment not found' });
+
+      let configs = [];
+      try {
+        const raw = envs[0].configuration;
+        if (!raw) configs = [];
+        else if (typeof raw === 'string') configs = JSON.parse(raw);
+        else configs = raw;
+        if (!Array.isArray(configs)) configs = [];
+      } catch (err) {
+        configs = [];
+      }
+
+      const idx = configs.findIndex((c) => String(c.id) === String(configId));
+      if (idx === -1) return res.status(404).json({ error: 'Configuration not found' });
+
+      const removed = configs.splice(idx, 1)[0];
+
+      await db.query('UPDATE environments SET configuration = ? WHERE id = ?', [JSON.stringify(configs), id]);
+
+      await db.query('INSERT INTO activities (user_id, entity_type, entity_id, action, description) VALUES (?, ?, ?, ?, ?)',
+        [req.user.id, 'environment', id, 'delete_configuration', `Deleted configuration ${removed.name}`]);
+
+      res.json({ message: 'Configuration deleted' });
+    } catch (error) {
+      console.error('Delete configuration error:', error);
+      res.status(500).json({ error: 'Failed to delete configuration' });
+    }
+  }
 };
 
 module.exports = environmentController;

@@ -19,6 +19,13 @@ export default function Environments({ user }) {
     status: 'available'
   });
   const [submitting, setSubmitting] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [selectedEnv, setSelectedEnv] = useState(null);
+  const [configs, setConfigs] = useState([]);
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configForm, setConfigForm] = useState({ category: 'application', name: '', settings: {} });
+  const [configSubmitting, setConfigSubmitting] = useState(false);
+  const [editingConfigId, setEditingConfigId] = useState(null);
 
   useEffect(() => {
     fetchEnvironments();
@@ -33,6 +40,67 @@ export default function Environments({ user }) {
       toast.error('Failed to fetch environments');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchConfigs = async (envId) => {
+    try {
+      setConfigLoading(true);
+      const response = await environmentAPI.getConfigs(envId);
+      setConfigs(response.data.configurations || []);
+    } catch (error) {
+      toast.error('Failed to load configurations');
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const openConfigModal = async (env) => {
+    setSelectedEnv(env);
+    setShowConfigModal(true);
+    setEditingConfigId(null);
+    setConfigForm({ category: 'application', name: '', settings: {} });
+    await fetchConfigs(env.id);
+  };
+
+  const handleAddOrUpdateConfig = async (e) => {
+    e.preventDefault();
+    if (!configForm.name || !configForm.category) {
+      toast.error('Category and name are required');
+      return;
+    }
+    try {
+      setConfigSubmitting(true);
+      if (editingConfigId) {
+        await environmentAPI.updateConfig(selectedEnv.id, editingConfigId, configForm);
+        toast.success('Configuration updated');
+      } else {
+        await environmentAPI.createConfig(selectedEnv.id, configForm);
+        toast.success('Configuration added');
+      }
+      await fetchConfigs(selectedEnv.id);
+      setConfigForm({ category: 'application', name: '', settings: {} });
+      setEditingConfigId(null);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to save configuration');
+    } finally {
+      setConfigSubmitting(false);
+    }
+  };
+
+  const handleEditConfig = (cfg) => {
+    setEditingConfigId(cfg.id);
+    setConfigForm({ category: cfg.category, name: cfg.name, settings: cfg.settings || {} });
+  };
+
+  const handleDeleteConfig = async (cfgId) => {
+    if (!confirm('Delete this configuration?')) return;
+    try {
+      await environmentAPI.deleteConfig(selectedEnv.id, cfgId);
+      toast.success('Configuration deleted');
+      await fetchConfigs(selectedEnv.id);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to delete configuration');
     }
   };
 
@@ -213,8 +281,76 @@ export default function Environments({ user }) {
                   {env.url}
                 </a>
               )}
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={() => openConfigModal(env)}
+                  className="px-3 py-1 text-sm bg-gray-100 border rounded-md hover:bg-gray-200"
+                >
+                  Manage Configs
+                </button>
+                {(user.role === 'admin' || user.role === 'manager') && (
+                  <button
+                    onClick={() => setShowModal(true)}
+                    className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Edit Environment
+                  </button>
+                )}
+              </div>
             </div>
           ))}
+        </div>
+      )}
+      {/* Configuration modal */}
+      {showConfigModal && selectedEnv && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white">
+              <h3 className="text-lg font-semibold">Configurations - {selectedEnv.name}</h3>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { setShowConfigModal(false); setSelectedEnv(null); }} className="text-gray-500 hover:text-gray-700"><X className="h-5 w-5" /></button>
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="mb-4 flex justify-between items-center">
+                <div className="text-sm text-gray-600">Manage applications, hardware and network configs for this environment.</div>
+                <div>
+                  <select value={configForm.category} onChange={(e) => setConfigForm({ ...configForm, category: e.target.value })} className="px-3 py-2 border rounded-md mr-2">
+                    <option value="application">Application</option>
+                    <option value="hardware">Hardware</option>
+                    <option value="network">Network</option>
+                  </select>
+                  <input type="text" placeholder="Name" value={configForm.name} onChange={(e) => setConfigForm({ ...configForm, name: e.target.value })} className="px-3 py-2 border rounded-md mr-2" />
+                  <button onClick={handleAddOrUpdateConfig} disabled={configSubmitting} className="px-3 py-2 bg-blue-600 text-white rounded-md">{editingConfigId ? 'Update' : 'Add'}</button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {configLoading ? (
+                  <div className="py-8 text-center">Loading configurations...</div>
+                ) : (
+                  configs.length === 0 ? (
+                    <div className="text-sm text-gray-500">No configurations yet.</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {configs.map((cfg) => (
+                        <div key={cfg.id} className="border rounded-md p-3 flex justify-between items-start">
+                          <div>
+                            <div className="font-medium">{cfg.name} <span className="text-xs lowercase text-gray-500">({cfg.category})</span></div>
+                            <div className="text-sm text-gray-600 mt-1">{cfg.settings && typeof cfg.settings === 'object' ? JSON.stringify(cfg.settings) : String(cfg.settings)}</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleEditConfig(cfg)} className="px-2 py-1 bg-yellow-100 rounded-md text-sm">Edit</button>
+                            <button onClick={() => handleDeleteConfig(cfg.id)} className="px-2 py-1 bg-red-100 rounded-md text-sm">Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

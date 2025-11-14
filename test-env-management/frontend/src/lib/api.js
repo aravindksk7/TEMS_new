@@ -51,6 +51,11 @@ export const environmentAPI = {
   delete: (id) => api.delete(`/environments/${id}`),
   getAvailability: (id, params) => api.get(`/environments/${id}/availability`, { params }),
   getStatistics: () => api.get('/environments/statistics'),
+  // Configuration (applications/hardware/network) management
+  getConfigs: (envId) => api.get(`/environments/${envId}/configs`),
+  createConfig: (envId, data) => api.post(`/environments/${envId}/configs`, data),
+  updateConfig: (envId, configId, data) => api.put(`/environments/${envId}/configs/${configId}`, data),
+  deleteConfig: (envId, configId) => api.delete(`/environments/${envId}/configs/${configId}`),
 };
 
 // Booking APIs
