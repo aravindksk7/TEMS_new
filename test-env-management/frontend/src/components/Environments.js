@@ -150,7 +150,7 @@ export default function Environments({ user }) {
         <h2 className="text-2xl font-bold">Environments</h2>
         {(user.role === 'admin' || user.role === 'manager') && (
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => { setEditingEnvId(null); setFormData({ name: '', type: 'dev', description: '', url: '', status: 'available' }); setShowModal(true); }}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             <Plus className="h-5 w-5 mr-2" />
@@ -165,7 +165,7 @@ export default function Environments({ user }) {
             <div className="flex justify-between items-center p-6 border-b">
               <h3 className="text-lg font-semibold">{editingEnvId ? 'Edit Environment' : 'Create Environment'}</h3>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => { setShowModal(false); setEditingEnvId(null); setFormData({ name: '', type: 'dev', description: '', url: '', status: 'available' }); }}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <X className="h-5 w-5" />
