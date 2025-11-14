@@ -150,13 +150,57 @@ const analyticsController = {
 
       const [environmentConflicts] = await db.query(envQuery, params);
 
+      // Also provide raw unresolved conflict rows for resolution UI
+      const [conflictDetails] = await db.query(`
+        SELECT c.id, c.booking_id_1, c.booking_id_2, c.conflict_type, c.severity, c.resolution_status, c.detected_at
+        FROM conflicts c
+        WHERE c.resolution_status = 'unresolved'
+        ORDER BY c.detected_at DESC
+        LIMIT 500
+      `);
+
       res.json({
         conflictSummary: conflicts,
+        conflictDetails,
         topConflictEnvironments: environmentConflicts
       });
     } catch (error) {
       console.error('Get conflict analysis error:', error);
       res.status(500).json({ error: 'Failed to fetch conflict analysis' });
+    }
+  },
+
+  // Resolve a conflict (admin/manager)
+  resolveConflict: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { resolution_notes } = req.body;
+
+      // Ensure conflict exists
+      const [conflicts] = await db.query('SELECT * FROM conflicts WHERE id = ?', [id]);
+      if (conflicts.length === 0) return res.status(404).json({ error: 'Conflict not found' });
+
+      // Update conflict resolution
+      await db.query(
+        `UPDATE conflicts SET resolution_status = 'resolved', resolved_at = NOW(), resolved_by = ?, resolution_notes = ? WHERE id = ?`,
+        [req.user.id, resolution_notes || null, id]
+      );
+
+      // Log activity (use entity_type 'system' with metadata to mark as conflict action)
+      const metadata = JSON.stringify({ 
+        entity_subtype: 'conflict',
+        conflict_id: id,
+        resolution_notes: resolution_notes || null
+      });
+      await db.query(
+        'INSERT INTO activities (user_id, entity_type, entity_id, action, description, metadata) VALUES (?, ?, ?, ?, ?, ?)',
+        [req.user.id, 'system', id, 'resolve', `Resolved conflict ${id}${resolution_notes ? ': ' + resolution_notes : ''}`, metadata]
+      );
+
+      res.json({ message: 'Conflict resolved' });
+    } catch (error) {
+      console.error('Resolve conflict error:', error);
+      res.status(500).json({ error: 'Failed to resolve conflict' });
     }
   },
 

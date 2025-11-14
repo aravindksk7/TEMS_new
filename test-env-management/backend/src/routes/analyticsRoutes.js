@@ -18,6 +18,9 @@ router.get('/user-activity', authorizeRoles('admin', 'manager'), analyticsContro
 // Get conflict analysis
 router.get('/conflicts', analyticsController.getConflictAnalysis);
 
+// Resolve a conflict (admin/manager only)
+router.put('/conflicts/:id/resolve', authorizeRoles('admin', 'manager'), analyticsController.resolveConflict);
+
 // Get booking trends
 router.get('/trends', analyticsController.getBookingTrends);
 

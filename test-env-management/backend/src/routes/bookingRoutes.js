@@ -24,4 +24,7 @@ router.post('/', bookingController.createBooking);
 // Update booking status (approve/reject - manager/admin only)
 router.patch('/:id/status', authorizeRoles('admin', 'manager'), bookingController.updateBookingStatus);
 
+// Update booking details (manager/admin only)
+router.put('/:id', authorizeRoles('admin', 'manager'), bookingController.updateBooking);
+
 module.exports = router;

@@ -19,6 +19,14 @@ export default function Environments({ user }) {
     status: 'available'
   });
   const [submitting, setSubmitting] = useState(false);
+  const [editingEnvId, setEditingEnvId] = useState(null);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [selectedEnv, setSelectedEnv] = useState(null);
+  const [configs, setConfigs] = useState([]);
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configForm, setConfigForm] = useState({ category: 'application', name: '', settings: {} });
+  const [configSubmitting, setConfigSubmitting] = useState(false);
+  const [editingConfigId, setEditingConfigId] = useState(null);
 
   useEffect(() => {
     fetchEnvironments();
@@ -36,7 +44,97 @@ export default function Environments({ user }) {
     }
   };
 
-  const handleCreate = async (e) => {
+  const fetchConfigs = async (envId) => {
+    try {
+      setConfigLoading(true);
+      const response = await environmentAPI.getConfigs(envId);
+      setConfigs(response.data.configurations || []);
+    } catch (error) {
+      toast.error('Failed to load configurations');
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const openConfigModal = async (env) => {
+    setSelectedEnv(env);
+    setShowConfigModal(true);
+    setEditingConfigId(null);
+    setConfigForm({ category: 'application', name: '', settings: {} });
+    await fetchConfigs(env.id);
+  };
+
+  const handleAddOrUpdateConfig = async (e) => {
+    e.preventDefault();
+    if (!configForm.name || !configForm.category) {
+      toast.error('Category and name are required');
+      return;
+    }
+    try {
+      setConfigSubmitting(true);
+      if (editingConfigId) {
+        await environmentAPI.updateConfig(selectedEnv.id, editingConfigId, configForm);
+        toast.success('Configuration updated');
+      } else {
+        await environmentAPI.createConfig(selectedEnv.id, configForm);
+        toast.success('Configuration added');
+      }
+      await fetchConfigs(selectedEnv.id);
+      setConfigForm({ category: 'application', name: '', settings: {} });
+      setEditingConfigId(null);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to save configuration');
+    } finally {
+      setConfigSubmitting(false);
+    }
+  };
+
+  const handleEditConfig = (cfg) => {
+    setEditingConfigId(cfg.id);
+    setConfigForm({ category: cfg.category, name: cfg.name, settings: cfg.settings || {} });
+  };
+
+  const handleDeleteConfig = async (cfgId) => {
+    if (!confirm('Delete this configuration?')) return;
+    try {
+      await environmentAPI.deleteConfig(selectedEnv.id, cfgId);
+      toast.success('Configuration deleted');
+      await fetchConfigs(selectedEnv.id);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to delete configuration');
+    }
+  };
+
+  const openEditModal = async (env) => {
+    // Fetch latest environment details to ensure we prefill correctly
+    try {
+      const resp = await environmentAPI.getById(env.id);
+      const e = resp.data.environment || resp.data;
+      setEditingEnvId(env.id);
+      setFormData({
+        name: e.name || env.name || '',
+        type: e.type || env.type || 'dev',
+        description: e.description || env.description || '',
+        url: e.url || env.url || '',
+        status: e.status || env.status || 'available',
+      });
+      setShowModal(true);
+    } catch (error) {
+      toast.error('Failed to load environment details for editing');
+      // Fallback to using the passed env object
+      setEditingEnvId(env.id);
+      setFormData({
+        name: env.name || '',
+        type: env.type || 'dev',
+        description: env.description || '',
+        url: env.url || '',
+        status: env.status || 'available',
+      });
+      setShowModal(true);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.type) {
       toast.error('Name and type are required');
@@ -44,13 +142,19 @@ export default function Environments({ user }) {
     }
     try {
       setSubmitting(true);
-      await environmentAPI.create(formData);
-      toast.success('Environment created successfully');
+      if (editingEnvId) {
+        await environmentAPI.update(editingEnvId, formData);
+        toast.success('Environment updated successfully');
+      } else {
+        await environmentAPI.create(formData);
+        toast.success('Environment created successfully');
+      }
       setShowModal(false);
+      setEditingEnvId(null);
       setFormData({ name: '', type: 'dev', description: '', url: '', status: 'available' });
       fetchEnvironments();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to create environment');
+      toast.error(error.response?.data?.error || 'Failed to save environment');
     } finally {
       setSubmitting(false);
     }
@@ -62,7 +166,7 @@ export default function Environments({ user }) {
         <h2 className="text-2xl font-bold">Environments</h2>
         {(user.role === 'admin' || user.role === 'manager') && (
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => { setEditingEnvId(null); setFormData({ name: '', type: 'dev', description: '', url: '', status: 'available' }); setShowModal(true); }}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             <Plus className="h-5 w-5 mr-2" />
@@ -75,15 +179,15 @@ export default function Environments({ user }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
             <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-lg font-semibold">Create Environment</h3>
+              <h3 className="text-lg font-semibold">{editingEnvId ? 'Edit Environment' : 'Create Environment'}</h3>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => { setShowModal(false); setEditingEnvId(null); setFormData({ name: '', type: 'dev', description: '', url: '', status: 'available' }); }}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                 <input
@@ -145,7 +249,7 @@ export default function Environments({ user }) {
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => { setShowModal(false); setEditingEnvId(null); setFormData({ name: '', type: 'dev', description: '', url: '', status: 'available' }); }}
                   className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
@@ -155,7 +259,7 @@ export default function Environments({ user }) {
                   disabled={submitting}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {submitting ? 'Creating...' : 'Create'}
+                  {submitting ? (editingEnvId ? 'Saving...' : 'Creating...') : (editingEnvId ? 'Save' : 'Create')}
                 </button>
               </div>
             </form>
@@ -213,8 +317,76 @@ export default function Environments({ user }) {
                   {env.url}
                 </a>
               )}
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={() => openConfigModal(env)}
+                  className="px-3 py-1 text-sm bg-gray-100 border rounded-md hover:bg-gray-200"
+                >
+                  Manage Configs
+                </button>
+                {(user.role === 'admin' || user.role === 'manager') && (
+                  <button
+                    onClick={() => openEditModal(env)}
+                    className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Edit Environment
+                  </button>
+                )}
+              </div>
             </div>
           ))}
+        </div>
+      )}
+      {/* Configuration modal */}
+      {showConfigModal && selectedEnv && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white">
+              <h3 className="text-lg font-semibold">Configurations - {selectedEnv.name}</h3>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { setShowConfigModal(false); setSelectedEnv(null); }} className="text-gray-500 hover:text-gray-700"><X className="h-5 w-5" /></button>
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="mb-4 flex justify-between items-center">
+                <div className="text-sm text-gray-600">Manage applications, hardware and network configs for this environment.</div>
+                <div>
+                  <select value={configForm.category} onChange={(e) => setConfigForm({ ...configForm, category: e.target.value })} className="px-3 py-2 border rounded-md mr-2">
+                    <option value="application">Application</option>
+                    <option value="hardware">Hardware</option>
+                    <option value="network">Network</option>
+                  </select>
+                  <input type="text" placeholder="Name" value={configForm.name} onChange={(e) => setConfigForm({ ...configForm, name: e.target.value })} className="px-3 py-2 border rounded-md mr-2" />
+                  <button onClick={handleAddOrUpdateConfig} disabled={configSubmitting} className="px-3 py-2 bg-blue-600 text-white rounded-md">{editingConfigId ? 'Update' : 'Add'}</button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {configLoading ? (
+                  <div className="py-8 text-center">Loading configurations...</div>
+                ) : (
+                  configs.length === 0 ? (
+                    <div className="text-sm text-gray-500">No configurations yet.</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {configs.map((cfg) => (
+                        <div key={cfg.id} className="border rounded-md p-3 flex justify-between items-start">
+                          <div>
+                            <div className="font-medium">{cfg.name} <span className="text-xs lowercase text-gray-500">({cfg.category})</span></div>
+                            <div className="text-sm text-gray-600 mt-1">{cfg.settings && typeof cfg.settings === 'object' ? JSON.stringify(cfg.settings) : String(cfg.settings)}</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleEditConfig(cfg)} className="px-2 py-1 bg-yellow-100 rounded-md text-sm">Edit</button>
+                            <button onClick={() => handleDeleteConfig(cfg.id)} className="px-2 py-1 bg-red-100 rounded-md text-sm">Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

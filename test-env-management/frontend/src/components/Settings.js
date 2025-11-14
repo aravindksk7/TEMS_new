@@ -1,7 +1,8 @@
-'use client';
+ 'use client';
 
 import { useEffect, useState } from 'react';
 import { Users, Plus, X, Trash2 } from 'lucide-react';
+import { authAPI } from '../lib/api';
 import toast from 'react-hot-toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -10,6 +11,7 @@ export default function Settings({ user }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingUserId, setEditingUserId] = useState(null);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -83,6 +85,50 @@ export default function Settings({ user }) {
     }
   };
 
+  // Unified submit handler for create + update
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // If editing, perform update
+    if (editingUserId) {
+      try {
+        setSubmitting(true);
+        // Build payload - do not send empty password
+        const payload = {
+          username: formData.username,
+          email: formData.email,
+          full_name: formData.full_name,
+          role: formData.role,
+          department: formData.department,
+        };
+        if (formData.password) payload.password = formData.password;
+
+        await authAPI.updateUser(editingUserId, payload);
+        toast.success('User updated successfully');
+        setShowModal(false);
+        setEditingUserId(null);
+        setFormData({
+          username: '',
+          email: '',
+          password: '',
+          full_name: '',
+          role: 'tester',
+          department: ''
+        });
+        fetchUsers();
+      } catch (error) {
+        const msg = error?.response?.data?.error || error.message || 'Failed to update user';
+        toast.error(msg);
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Otherwise create
+    return handleCreate(e);
+  };
+
   const handleDelete = async (userId) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     try {
@@ -127,15 +173,15 @@ export default function Settings({ user }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
             <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-lg font-semibold">Add New User</h3>
+              <h3 className="text-lg font-semibold">{editingUserId ? 'Edit User' : 'Add New User'}</h3>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => { setShowModal(false); setEditingUserId(null); setFormData({ username: '', email: '', password: '', full_name: '', role: 'tester', department: '' }); }}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
                 <input
@@ -212,7 +258,7 @@ export default function Settings({ user }) {
                   disabled={submitting}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {submitting ? 'Creating...' : 'Create'}
+                  {submitting ? (editingUserId ? 'Saving...' : 'Creating...') : (editingUserId ? 'Save' : 'Create')}
                 </button>
               </div>
             </form>
@@ -250,13 +296,34 @@ export default function Settings({ user }) {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{u.department || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <button
-                      onClick={() => handleDelete(u.id)}
-                      className="text-red-600 hover:text-red-800 ml-2"
-                      title="Delete user"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          // open edit modal
+                          setEditingUserId(u.id);
+                          setFormData({
+                            username: u.username || '',
+                            email: u.email || '',
+                            password: '',
+                            full_name: u.full_name || '',
+                            role: u.role || 'tester',
+                            department: u.department || ''
+                          });
+                          setShowModal(true);
+                        }}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Edit user"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(u.id)}
+                        className="text-red-600 hover:text-red-800 ml-2"
+                        title="Delete user"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
