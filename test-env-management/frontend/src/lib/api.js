@@ -40,6 +40,7 @@ export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
   getCurrentUser: () => api.get('/auth/me'),
+  updateUser: (userId, data) => api.put(`/auth/users/${userId}`, data),
 };
 
 // Environment APIs
@@ -64,6 +65,7 @@ export const bookingAPI = {
   getById: (id) => api.get(`/bookings/${id}`),
   create: (data) => api.post('/bookings', data),
   updateStatus: (id, data) => api.patch(`/bookings/${id}/status`, data),
+  update: (id, data) => api.put(`/bookings/${id}`, data),
   getMyBookings: () => api.get('/bookings/my-bookings'),
   getStatistics: () => api.get('/bookings/statistics'),
 };
@@ -83,6 +85,7 @@ export const analyticsAPI = {
   getUtilization: (params) => api.get('/analytics/utilization', { params }),
   getUserActivity: (params) => api.get('/analytics/user-activity', { params }),
   getConflicts: (params) => api.get('/analytics/conflicts', { params }),
+  resolveConflict: (id, data) => api.put(`/analytics/conflicts/${id}/resolve`, data),
   getTrends: (params) => api.get('/analytics/trends', { params }),
   getPerformance: (params) => api.get('/analytics/performance', { params }),
   exportReport: (params) => api.get('/analytics/export', { params, responseType: 'blob' }),

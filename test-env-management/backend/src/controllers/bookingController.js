@@ -256,13 +256,69 @@ const bookingController = {
       // Log activity
       await db.query(
         'INSERT INTO activities (user_id, entity_type, entity_id, action, description) VALUES (?, ?, ?, ?, ?)',
-        [req.user.id, 'booking', id, status, `${status} booking: ${booking.project_name}`]
+        [req.user.id, 'booking', id, status, `${status} booking: ${booking.project_name}${notes ? ' - ' + notes : ''}`]
       );
 
       res.json({ message: `Booking ${status} successfully` });
     } catch (error) {
       console.error('Update booking status error:', error);
       res.status(500).json({ error: 'Failed to update booking status' });
+    }
+  },
+
+  // Update booking details (admin/manager)
+  updateBooking: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { environment_id, project_name, purpose, start_time, end_time, priority } = req.body;
+
+      const [bookings] = await db.query('SELECT * FROM bookings WHERE id = ?', [id]);
+      if (bookings.length === 0) {
+        return res.status(404).json({ error: 'Booking not found' });
+      }
+
+      // Validate times if provided
+      if (start_time && end_time && new Date(start_time) >= new Date(end_time)) {
+        return res.status(400).json({ error: 'End time must be after start time' });
+      }
+
+      // If environment changed, ensure it exists
+      if (environment_id) {
+        const [envs] = await db.query('SELECT id FROM environments WHERE id = ?', [environment_id]);
+        if (envs.length === 0) return res.status(404).json({ error: 'Environment not found' });
+      }
+
+      const fields = [];
+      const params = [];
+      if (environment_id !== undefined) { fields.push('environment_id = ?'); params.push(environment_id); }
+      if (project_name !== undefined) { fields.push('project_name = ?'); params.push(project_name); }
+      if (purpose !== undefined) { fields.push('purpose = ?'); params.push(purpose); }
+      if (start_time !== undefined) { fields.push('start_time = ?'); params.push(start_time); }
+      if (end_time !== undefined) { fields.push('end_time = ?'); params.push(end_time); }
+      if (priority !== undefined) { fields.push('priority = ?'); params.push(priority); }
+
+      if (fields.length === 0) {
+        return res.status(400).json({ error: 'No valid fields to update' });
+      }
+
+      params.push(id);
+      const sql = `UPDATE bookings SET ${fields.join(', ')}, updated_at = NOW() WHERE id = ?`;
+      const [result] = await db.query(sql, params);
+
+      if (result.affectedRows === 0) return res.status(404).json({ error: 'Booking not found' });
+
+      const [rows] = await db.query('SELECT b.*, e.name as environment_name FROM bookings b JOIN environments e ON b.environment_id = e.id WHERE b.id = ?', [id]);
+
+      // Log activity
+      await db.query(
+        'INSERT INTO activities (user_id, entity_type, entity_id, action, description) VALUES (?, ?, ?, ?, ?)',
+        [req.user.id, 'booking', id, 'update', `Updated booking: ${rows[0].project_name}`]
+      );
+
+      res.json({ message: 'Booking updated successfully', booking: rows[0] });
+    } catch (error) {
+      console.error('Update booking error:', error);
+      res.status(500).json({ error: 'Failed to update booking' });
     }
   },
 

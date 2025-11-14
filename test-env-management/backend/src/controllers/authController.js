@@ -133,6 +133,79 @@ const authController = {
     }
   },
 
+  // Update user (admin only)
+  updateUser: async (req, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+
+      const { userId } = req.params;
+      const { username, email, full_name, department, role, is_active, password } = req.body;
+
+      // Prevent changing your own role to a non-admin role
+      if (parseInt(userId) === req.user.userId && role && role !== 'admin') {
+        return res.status(400).json({ error: 'Cannot change your own role' });
+      }
+
+      const fields = [];
+      const params = [];
+
+      if (username !== undefined) {
+        fields.push('username = ?');
+        params.push(username);
+      }
+      if (email !== undefined) {
+        fields.push('email = ?');
+        params.push(email);
+      }
+      if (full_name !== undefined) {
+        fields.push('full_name = ?');
+        params.push(full_name);
+      }
+      if (department !== undefined) {
+        fields.push('department = ?');
+        params.push(department);
+      }
+      if (role !== undefined) {
+        fields.push('role = ?');
+        params.push(role);
+      }
+      if (is_active !== undefined) {
+        fields.push('is_active = ?');
+        params.push(is_active);
+      }
+      if (password) {
+        const password_hash = await bcrypt.hash(password, 10);
+        fields.push('password_hash = ?');
+        params.push(password_hash);
+      }
+
+      if (fields.length === 0) {
+        return res.status(400).json({ error: 'No valid fields to update' });
+      }
+
+      params.push(userId);
+
+      const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
+      const [result] = await db.query(sql, params);
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const [rows] = await db.query(
+        'SELECT id, username, email, full_name, role, department, is_active, created_at FROM users WHERE id = ?',
+        [userId]
+      );
+
+      res.json({ message: 'User updated successfully', user: rows[0] });
+    } catch (error) {
+      console.error('Update user error:', error);
+      res.status(500).json({ error: 'Failed to update user' });
+    }
+  },
+
   // Delete user (admin only)
   deleteUser: async (req, res) => {
     try {

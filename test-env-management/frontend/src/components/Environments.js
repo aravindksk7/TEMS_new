@@ -105,17 +105,33 @@ export default function Environments({ user }) {
     }
   };
 
-  const openEditModal = (env) => {
-    // Populate form with existing environment details for editing
-    setEditingEnvId(env.id);
-    setFormData({
-      name: env.name || '',
-      type: env.type || 'dev',
-      description: env.description || '',
-      url: env.url || '',
-      status: env.status || 'available',
-    });
-    setShowModal(true);
+  const openEditModal = async (env) => {
+    // Fetch latest environment details to ensure we prefill correctly
+    try {
+      const resp = await environmentAPI.getById(env.id);
+      const e = resp.data.environment || resp.data;
+      setEditingEnvId(env.id);
+      setFormData({
+        name: e.name || env.name || '',
+        type: e.type || env.type || 'dev',
+        description: e.description || env.description || '',
+        url: e.url || env.url || '',
+        status: e.status || env.status || 'available',
+      });
+      setShowModal(true);
+    } catch (error) {
+      toast.error('Failed to load environment details for editing');
+      // Fallback to using the passed env object
+      setEditingEnvId(env.id);
+      setFormData({
+        name: env.name || '',
+        type: env.type || 'dev',
+        description: env.description || '',
+        url: env.url || '',
+        status: env.status || 'available',
+      });
+      setShowModal(true);
+    }
   };
 
   const handleSubmit = async (e) => {
