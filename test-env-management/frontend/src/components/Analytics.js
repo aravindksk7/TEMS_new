@@ -4,6 +4,18 @@ import { useEffect, useState } from 'react';
 import { analyticsAPI } from '@/lib/api';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  BarChart,
+  Bar,
+  Legend
+} from 'recharts';
 
 const TABS = ['Overview', 'Utilization', 'Users', 'Conflicts', 'Trends', 'Performance', 'Export'];
 
@@ -130,7 +142,8 @@ export default function Analytics({ user }) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${type}_report.csv`;
+      const suffix = utilParams.start_date && utilParams.end_date ? `_${utilParams.start_date}_${utilParams.end_date}` : '';
+      a.download = `${type}_report${suffix}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -178,14 +191,19 @@ export default function Analytics({ user }) {
       </div>
       <div className="space-y-3">
         {utilization.length === 0 ? <div className="text-gray-500">No data</div> : (
-          <table className="w-full bg-white rounded shadow overflow-hidden">
-            <thead className="bg-gray-50"><tr><th className="p-2">Environment</th><th className="p-2">Hours Booked</th><th className="p-2">Util %</th></tr></thead>
-            <tbody>
-              {utilization.map(u => (
-                <tr key={u.id} className="border-t"><td className="p-2">{u.name}</td><td className="p-2">{u.total_hours_booked || 0}</td><td className="p-2">{u.utilization_percentage}%</td></tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ width: '100%', height: 300 }} className="bg-white rounded shadow p-2">
+            <ResponsiveContainer>
+              <BarChart data={utilization} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="total_hours_booked" name="Hours Booked" fill="#3182ce" />
+                <Bar dataKey="utilization_percentage" name="Util %" fill="#63b3ed" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         )}
       </div>
     </div>
@@ -249,14 +267,19 @@ export default function Analytics({ user }) {
         <button onClick={runTrends} className="px-3 py-2 bg-blue-600 text-white rounded">Load Weekly Trends</button>
       </div>
       {trends.length === 0 ? <div className="text-gray-500">No trends data</div> : (
-        <table className="w-full bg-white rounded shadow overflow-hidden">
-          <thead className="bg-gray-50"><tr><th className="p-2">Period</th><th className="p-2">Total</th><th className="p-2">Approved</th></tr></thead>
-          <tbody>
-            {trends.map(t => (
-              <tr key={t.period} className="border-t"><td className="p-2">{t.period}</td><td className="p-2">{t.total_bookings}</td><td className="p-2">{t.approved}</td></tr>
-            ))}
-          </tbody>
-        </table>
+        <div style={{ width: '100%', height: 320 }} className="bg-white rounded shadow p-2">
+          <ResponsiveContainer>
+            <LineChart data={trends} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="period" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="total_bookings" stroke="#4fd1c5" name="Total" />
+              <Line type="monotone" dataKey="approved" stroke="#3182ce" name="Approved" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       )}
     </div>
   );
