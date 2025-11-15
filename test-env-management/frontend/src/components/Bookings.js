@@ -126,20 +126,32 @@ export default function Bookings({ user }) {
       setActionLoading(false);
     }
   };
+  // Delete / Cancel modal state
+  const [deleteModal, setDeleteModal] = useState({ visible: false, booking: null, hard: false, notes: '' });
+  const [deleting, setDeleting] = useState(false);
 
-  const handleDelete = async (booking) => {
+  const openDeleteModal = (booking, hard = false) => {
+    setDeleteModal({ visible: true, booking, hard, notes: '' });
+  };
+
+  const confirmDelete = async () => {
+    const { booking, hard, notes } = deleteModal;
     if (!booking) return;
-    const ok = window.confirm('Are you sure you want to delete this booking? This action cannot be undone.');
-    if (!ok) return;
     try {
-      setActionLoading(true);
-      await bookingAPI.delete(booking.id);
-      toast.success('Booking deleted');
+      setDeleting(true);
+      if (hard) {
+        await bookingAPI.delete(booking.id);
+        toast.success('Booking deleted');
+      } else {
+        await bookingAPI.updateStatus(booking.id, { status: 'cancelled', notes: notes || 'Cancelled by user' });
+        toast.success('Booking cancelled');
+      }
+      setDeleteModal({ visible: false, booking: null, hard: false, notes: '' });
       fetchBookings();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to delete booking');
+      toast.error(err.response?.data?.error || 'Failed to delete/cancel booking');
     } finally {
-      setActionLoading(false);
+      setDeleting(false);
     }
   };
 
@@ -317,6 +329,51 @@ export default function Bookings({ user }) {
         </div>
       )}
 
+      {deleteModal.visible && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h3 className="text-lg font-semibold">{deleteModal.hard ? 'Delete Booking' : 'Cancel Booking'}</h3>
+              <button
+                onClick={() => setDeleteModal({ visible: false, booking: null, hard: false, notes: '' })}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="mb-4">{deleteModal.hard ? 'This will permanently delete the booking. This action cannot be undone.' : 'This will cancel the booking. You can provide optional notes for the owner/approver.'}</p>
+              {!deleteModal.hard && (
+                <textarea
+                  value={deleteModal.notes}
+                  onChange={(e) => setDeleteModal({ ...deleteModal, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  rows={4}
+                  placeholder="Optional notes..."
+                />
+              )}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setDeleteModal({ visible: false, booking: null, hard: false, notes: '' })}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deleting ? (deleteModal.hard ? 'Deleting...' : 'Cancelling...') : (deleteModal.hard ? 'Delete' : 'Cancel Booking')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -389,7 +446,7 @@ export default function Bookings({ user }) {
                       {/* Owner delete control (or admin) */}
                       {(booking.user_id === user?.id || user?.role === 'admin' || user?.role === 'manager') && booking.status !== 'active' && (
                         <button
-                          onClick={() => handleDelete(booking)}
+                          onClick={() => openDeleteModal(booking, user?.role === 'admin')}
                           className="px-2 py-1 bg-gray-600 text-white rounded text-xs"
                         >
                           Delete
