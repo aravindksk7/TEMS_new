@@ -1,33 +1,30 @@
-import { LineChart, Line, ResponsiveContainer, Tooltip, CartesianGrid, XAxis, YAxis } from 'recharts';
-import toast from 'react-hot-toast';
-'use client';
+ 'use client';
 
-import { useEffect, useState } from 'react';
-import { Server, Calendar, AlertTriangle, Activity, TrendingUp, Clock } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { Server, Calendar, AlertTriangle, Activity, Clock } from 'lucide-react';
 import { environmentAPI, bookingAPI, monitoringAPI, analyticsAPI } from '@/lib/api';
 import { getSocket, onMetricUpdate, offMetricUpdate } from '@/lib/socket';
 import { format } from 'date-fns';
 
 export default function Dashboard({ user }) {
-  const [stats, setStats] = useState({
-    environments: {},
-    bookings: {},
-    conflicts: 0
-  });
+  const [loading, setLoading] = useState(true);
+
+  const [stats, setStats] = useState({ environments: {}, bookings: {}, conflicts: 0 });
   const [recentActivities, setRecentActivities] = useState([]);
-    const [activitiesPage, setActivitiesPage] = useState(1);
-    const [hasMoreActivities, setHasMoreActivities] = useState(true);
+  const [activitiesPage, setActivitiesPage] = useState(1);
+  const [hasMoreActivities, setHasMoreActivities] = useState(false);
   const [upcomingBookings, setUpcomingBookings] = useState([]);
   const [criticalEnvs, setCriticalEnvs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [sparklineData, setSparklineData] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
-    
-    // Set up real-time updates
+
+    // realtime updates
     const socket = getSocket();
-    onMetricUpdate((data) => {
-      console.log('Metric update received:', data);
+    onMetricUpdate(() => {
       fetchDashboardData();
     });
 
@@ -39,64 +36,58 @@ export default function Dashboard({ user }) {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      
-      const [envStats, bookingStats, monitoringData, analyticsData] = await Promise.all([
+
+      const [envResp, bookResp, monitorResp] = await Promise.all([
         environmentAPI.getStatistics(),
         bookingAPI.getStatistics(),
-        monitoringAPI.getDashboard(),
-        analyticsAPI.getDashboard()
+        monitoringAPI.getDashboard()
       ]);
 
       setStats({
-        environments: envStats.data.statistics,
-        bookings: bookingStats.data.bookings,
-        conflicts: bookingStats.data.conflicts
+        environments: envResp.data.statistics || {},
+        bookings: bookResp.data.bookings || {},
+        conflicts: bookResp.data.conflicts || 0
       });
 
-      setCriticalEnvs(monitoringData.data.criticalEnvironments || []);
-      setRecentActivities(monitoringData.data.recentActivities || []);
-      
-      // Fetch upcoming bookings
-      const bookingsResponse = await bookingAPI.getAll({
-        status: 'approved',
-        start_date: new Date().toISOString(),
-        end_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      });
-      setUpcomingBookings(bookingsResponse.data.bookings.slice(0, 5));
-      // Fetch a small sparkline data set (booking trends) for inline charts
+      setCriticalEnvs(monitorResp.data.criticalEnvironments || []);
+      setRecentActivities(monitorResp.data.recentActivities || []);
+
+      // upcoming bookings (small sample)
       try {
-        const trendsResp = await analyticsAPI.getTrends({ period: 'week' });
-        const trendData = trendsResp.data.trends || [];
-        // attach small trend sample to state for sparklines
-        setSparklineData(trendData.slice(0, 6));
-      } catch (err) {
-        // ignore
+        const bResp = await bookingAPI.getAll({ status: 'approved', start_date: new Date().toISOString(), end_date: new Date(Date.now() + 24*60*60*1000).toISOString() });
+        setUpcomingBookings((bResp.data.bookings || []).slice(0,5));
+      } catch (e) {
+        setUpcomingBookings([]);
       }
 
-  // Load more activities (paginated)
-  const loadActivitiesPage = async (page = 1) => {
-    try {
-      const resp = await monitoringAPI.getActivities({ page, limit: 10 });
-      if (page === 1) setRecentActivities(resp.data.activities);
-      else setRecentActivities(prev => [...prev, ...resp.data.activities]);
-      setHasMoreActivities((resp.data.activities || []).length === 10);
-      setActivitiesPage(page);
+      // sparkline / trends
+      try {
+        const tResp = await analyticsAPI.getTrends({ period: 'week' });
+        setSparklineData(tResp.data.trends || []);
+      } catch (e) {
+        setSparklineData([]);
+      }
+
+      // initial activities pagination
+      await loadActivitiesPage(1);
     } catch (err) {
-      console.error('Failed to load activities', err);
+      console.error('Failed to fetch dashboard data', err);
+      toast.error('Failed to load dashboard');
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    // initial load activities
-    loadActivitiesPage(1);
-  }, []);
-
-  const [sparklineData, setSparklineData] = useState([]);
-
-    } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
-    } finally {
-      setLoading(false);
+  const loadActivitiesPage = async (page = 1) => {
+    try {
+      const resp = await monitoringAPI.getActivities({ page, limit: 10 });
+      const acts = resp.data.activities || [];
+      if (page === 1) setRecentActivities(acts);
+      else setRecentActivities(prev => [...prev, ...acts]);
+      setHasMoreActivities(acts.length === 10);
+      setActivitiesPage(page);
+    } catch (err) {
+      console.error('Failed to load activities', err);
     }
   };
 
@@ -116,19 +107,7 @@ export default function Dashboard({ user }) {
           <p className={`text-3xl font-bold mt-2 ${color}`}>{value}</p>
           {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
         </div>
-        <div className={`p-3 rounded-lg ${color.replace('text', 'bg').replace('600', '100')}`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`p-3 rounded-lg ${color.replace('text', 'bg').replace('600', '100')}`}>
-                      <Icon className={`h-8 w-8 ${color}`} />
-                    </div>
-                    <div style={{ width: 120, height: 40 }}>
-                      <ResponsiveContainer>
-                        <LineChart data={sparklineData}>
-                          <Line type="monotone" dataKey="total_bookings" stroke="#4fd1c5" strokeWidth={2} dot={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
+        <div className="p-3 rounded-lg bg-gray-100">
           <Icon className={`h-8 w-8 ${color}`} />
         </div>
       </div>
@@ -148,39 +127,13 @@ export default function Dashboard({ user }) {
         </div>
       </div>
 
-      {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Environments"
-          value={stats.environments.total_environments || 0}
-          icon={Server}
-          color="text-blue-600"
-          subtitle={`${stats.environments.available || 0} available`}
-        />
-        <StatCard
-          title="Active Bookings"
-          value={stats.bookings.active_bookings || 0}
-          icon={Calendar}
-          color="text-green-600"
-          subtitle={`${stats.bookings.pending_bookings || 0} pending approval`}
-        />
-        <StatCard
-          title="Unresolved Conflicts"
-          value={(stats.conflicts && stats.conflicts.unresolved_conflicts) || 0}
-          icon={AlertTriangle}
-          color="text-orange-600"
-          subtitle={(stats.conflicts && stats.conflicts.critical_conflicts > 0) ? `${stats.conflicts.critical_conflicts} critical` : 'No critical'}
-        />
-        <StatCard
-          title="System Health"
-          value={criticalEnvs.length === 0 ? '100%' : `${Math.max(0, 100 - criticalEnvs.length * 10)}%`}
-          icon={Activity}
-          color={criticalEnvs.length === 0 ? 'text-green-600' : 'text-red-600'}
-          subtitle={criticalEnvs.length > 0 ? `${criticalEnvs.length} critical alerts` : 'All systems operational'}
-        />
+        <StatCard title="Total Environments" value={stats.environments.total_environments || 0} icon={Server} color="text-blue-600" subtitle={`${stats.environments.available || 0} available`} />
+        <StatCard title="Active Bookings" value={stats.bookings.active_bookings || 0} icon={Calendar} color="text-green-600" subtitle={`${stats.bookings.pending_bookings || 0} pending`} />
+        <StatCard title="Unresolved Conflicts" value={(stats.conflicts && stats.conflicts.unresolved_conflicts) || 0} icon={AlertTriangle} color="text-orange-600" subtitle={(stats.conflicts && stats.conflicts.critical_conflicts > 0) ? `${stats.conflicts.critical_conflicts} critical` : 'No critical'} />
+        <StatCard title="System Health" value={criticalEnvs.length === 0 ? '100%' : `${Math.max(0, 100 - criticalEnvs.length * 10)}%`} icon={Activity} color={criticalEnvs.length === 0 ? 'text-green-600' : 'text-red-600'} subtitle={criticalEnvs.length > 0 ? `${criticalEnvs.length} critical alerts` : 'All systems operational'} />
       </div>
 
-      {/* Environment Status Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold mb-4">Environment Status</h3>
@@ -189,10 +142,7 @@ export default function Dashboard({ user }) {
               <span className="text-sm text-gray-600">Available</span>
               <div className="flex items-center">
                 <div className="w-32 h-2 bg-gray-200 rounded-full mr-3">
-                  <div 
-                    className="h-2 bg-green-500 rounded-full" 
-                    style={{ width: `${(stats.environments.available / stats.environments.total_environments * 100) || 0}%` }}
-                  ></div>
+                  <div className="h-2 bg-green-500 rounded-full" style={{ width: `${(stats.environments.available / (stats.environments.total_environments || 1) * 100) || 0}%` }}></div>
                 </div>
                 <span className="text-sm font-semibold">{stats.environments.available || 0}</span>
               </div>
@@ -201,10 +151,7 @@ export default function Dashboard({ user }) {
               <span className="text-sm text-gray-600">In Use</span>
               <div className="flex items-center">
                 <div className="w-32 h-2 bg-gray-200 rounded-full mr-3">
-                  <div 
-                    className="h-2 bg-blue-500 rounded-full" 
-                    style={{ width: `${(stats.environments.in_use / stats.environments.total_environments * 100) || 0}%` }}
-                  ></div>
+                  <div className="h-2 bg-blue-500 rounded-full" style={{ width: `${(stats.environments.in_use / (stats.environments.total_environments || 1) * 100) || 0}%` }}></div>
                 </div>
                 <span className="text-sm font-semibold">{stats.environments.in_use || 0}</span>
               </div>
@@ -213,10 +160,7 @@ export default function Dashboard({ user }) {
               <span className="text-sm text-gray-600">Maintenance</span>
               <div className="flex items-center">
                 <div className="w-32 h-2 bg-gray-200 rounded-full mr-3">
-                  <div 
-                    className="h-2 bg-yellow-500 rounded-full" 
-                    style={{ width: `${(stats.environments.maintenance / stats.environments.total_environments * 100) || 0}%` }}
-                  ></div>
+                  <div className="h-2 bg-yellow-500 rounded-full" style={{ width: `${(stats.environments.maintenance / (stats.environments.total_environments || 1) * 100) || 0}%` }}></div>
                 </div>
                 <span className="text-sm font-semibold">{stats.environments.maintenance || 0}</span>
               </div>
@@ -242,14 +186,10 @@ export default function Dashboard({ user }) {
         </div>
       </div>
 
-      {/* Upcoming Bookings and Critical Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold flex items-center">
-              <Clock className="h-5 w-5 mr-2 text-blue-600" />
-              Upcoming Bookings
-            </h3>
+            <h3 className="text-lg font-semibold flex items-center"><Clock className="h-5 w-5 mr-2 text-blue-600" />Upcoming Bookings</h3>
           </div>
           <div className="space-y-3">
             {upcomingBookings.length === 0 ? (
@@ -274,17 +214,11 @@ export default function Dashboard({ user }) {
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold flex items-center">
-              <AlertTriangle className="h-5 w-5 mr-2 text-orange-600" />
-              Critical Alerts
-            </h3>
+            <h3 className="text-lg font-semibold flex items-center"><AlertTriangle className="h-5 w-5 mr-2 text-orange-600" />Critical Alerts</h3>
           </div>
           <div className="space-y-3">
             {criticalEnvs.length === 0 ? (
-              <div className="text-center py-8">
-                <Activity className="h-12 w-12 mx-auto text-green-500 mb-2" />
-                <p className="text-sm text-gray-500">All systems operational</p>
-              </div>
+              <div className="text-center py-8"><Activity className="h-12 w-12 mx-auto text-green-500 mb-2" /><p className="text-sm text-gray-500">All systems operational</p></div>
             ) : (
               criticalEnvs.map((env) => (
                 <div key={env.id} className="flex items-center p-3 bg-red-50 rounded-lg border border-red-200">
@@ -301,37 +235,28 @@ export default function Dashboard({ user }) {
         </div>
       </div>
 
-      {/* Recent Activities */}
       <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
         <h3 className="text-lg font-semibold mb-4">Recent Activities</h3>
-        <div className="space-y-2">
-      <div className="space-y-3">
-            {recentActivities.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-8">No recent activities</p>
-            ) : (
-              recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-center p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer" onClick={() => {
-                  // Navigate to related entity if possible
-                  if (activity.entity_type === 'booking') window.location.href = `/bookings/${activity.entity_id}`;
-                  else if (activity.entity_type === 'environment') window.location.href = `/environments/${activity.entity_id}`;
-                  else if (activity.entity_type === 'user') window.location.href = `/settings/users/${activity.entity_id}`;
-                }}>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-900">{activity.description}</p>
-                    <p className="text-xs text-gray-500">by {activity.user_name || 'System'} • {format(new Date(activity.created_at), 'MMM d, h:mm a')}</p>
-                  </div>
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${activity.action === 'create' ? 'bg-green-100 text-green-700' : activity.action === 'update' ? 'bg-blue-100 text-blue-700' : activity.action === 'delete' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
-                    {activity.action}
-                  </span>
+        <div className="space-y-3">
+          {recentActivities.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-8">No recent activities</p>
+          ) : (
+            recentActivities.map((activity) => (
+              <div key={activity.id} className="flex items-center p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer" onClick={() => {
+                if (activity.entity_type === 'booking') window.location.href = `/bookings/${activity.entity_id}`;
+                else if (activity.entity_type === 'environment') window.location.href = `/environments/${activity.entity_id}`;
+                else if (activity.entity_type === 'user') window.location.href = `/settings/users/${activity.entity_id}`;
+              }}>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-900">{activity.description}</p>
+                  <p className="text-xs text-gray-500">by {activity.user_name || 'System'} • {format(new Date(activity.created_at), 'MMM d, h:mm a')}</p>
                 </div>
-              ))
-            )}
-            {hasMoreActivities && (
-              <div className="text-center mt-3">
-                <button onClick={() => loadActivitiesPage(activitiesPage + 1)} className="px-3 py-2 bg-gray-100 rounded">Load more</button>
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${activity.action === 'create' ? 'bg-green-100 text-green-700' : activity.action === 'update' ? 'bg-blue-100 text-blue-700' : activity.action === 'delete' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{activity.action}</span>
               </div>
-            )}
-          </div>
+            ))
+          )}
+          {hasMoreActivities && (<div className="text-center mt-3"><button onClick={() => loadActivitiesPage(activitiesPage + 1)} className="px-3 py-2 bg-gray-100 rounded">Load more</button></div>)}
+        </div>
       </div>
     </div>
   );

@@ -346,25 +346,17 @@ const bookingController = {
   // Get booking statistics
   getBookingStatistics: async (req, res) => {
     try {
-      const [stats] = await db.query(`
-        SELECT 
-          COUNT(*) as total_bookings,
-          SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_bookings,
-          SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_bookings,
-          SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_bookings,
-          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_bookings,
-          SUM(CASE WHEN priority = 'critical' THEN 1 ELSE 0 END) as critical_priority,
-          SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) as high_priority
-        FROM bookings
-      `);
+      const sql = "SELECT COUNT(*) as total_bookings, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_bookings, SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_bookings, SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_bookings, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_bookings, SUM(CASE WHEN priority = 'critical' THEN 1 ELSE 0 END) as critical_priority, SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) as high_count FROM bookings";
 
-      const [conflictStats] = await db.query(`
-        SELECT 
-          COUNT(*) as total_conflicts,
-          SUM(CASE WHEN resolution_status = 'unresolved' THEN 1 ELSE 0 END) as unresolved_conflicts,
-          SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END) as critical_conflicts
-        FROM conflicts
-      `);
+      // execute
+      const [stats] = await db.query(sql);
+
+      const conflictSql = "SELECT COUNT(*) as total_conflicts, " +
+        "SUM(CASE WHEN resolution_status = 'unresolved' THEN 1 ELSE 0 END) as unresolved_conflicts, " +
+        "SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END) as critical_conflicts " +
+        "FROM conflicts";
+
+      const [conflictStats] = await db.query(conflictSql);
 
       res.json({ 
         bookings: stats[0],

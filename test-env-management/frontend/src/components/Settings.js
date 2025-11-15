@@ -10,6 +10,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 export default function Settings({ user }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingUserId, setEditingUserId] = useState(null);
   const [formData, setFormData] = useState({
@@ -145,6 +146,38 @@ export default function Settings({ user }) {
     }
   };
 
+  const handleRoleChange = async (userId, newRole) => {
+    try {
+      // optimistic UI update
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+      await authAPI.updateUser(userId, { role: newRole });
+      toast.success('Role updated');
+      fetchUsers();
+    } catch (error) {
+      toast.error('Failed to update role');
+      fetchUsers();
+    }
+  };
+
+  const handleToggleActive = async (userId, current) => {
+    try {
+      const newVal = !current;
+      // Prevent deactivating self
+      const me = JSON.parse(localStorage.getItem('user') || '{}');
+      if (me?.id === userId && !newVal) {
+        toast.error('Cannot deactivate your own account');
+        return;
+      }
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, is_active: newVal } : u)));
+      await authAPI.updateUser(userId, { is_active: newVal });
+      toast.success(newVal ? 'User activated' : 'User deactivated');
+      fetchUsers();
+    } catch (error) {
+      toast.error('Failed to update user status');
+      fetchUsers();
+    }
+  };
+
   if (user.role !== 'admin') {
     return (
       <div className="space-y-6">
@@ -166,6 +199,22 @@ export default function Settings({ user }) {
         >
           <Plus className="h-5 w-5 mr-2" />
           Add User
+        </button>
+      </div>
+
+      <div className="mt-4 flex items-center gap-3">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search users by username, email, or role"
+          className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          onClick={() => { setSearchQuery(''); fetchUsers(); }}
+          className="px-3 py-2 bg-gray-100 rounded-lg text-gray-700"
+        >
+          Clear
         </button>
       </div>
 
@@ -279,20 +328,47 @@ export default function Settings({ user }) {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Full Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Active</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((u) => (
+              {users
+                .filter((u) => {
+                  if (!searchQuery) return true;
+                  const q = searchQuery.toLowerCase();
+                  return (
+                    (u.username || '').toLowerCase().includes(q) ||
+                    (u.email || '').toLowerCase().includes(q) ||
+                    (u.role || '').toLowerCase().includes(q)
+                  );
+                })
+                .map((u) => (
                 <tr key={u.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{u.username}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{u.email}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{u.full_name}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 capitalize">
-                      {u.role}
-                    </span>
+                    <select
+                      value={u.role || 'tester'}
+                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                      className="px-2 py-1 border rounded-lg text-sm"
+                    >
+                      <option value="admin">Admin</option>
+                      <option value="manager">Manager</option>
+                      <option value="developer">Developer</option>
+                      <option value="tester">Tester</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <button
+                      onClick={() => handleToggleActive(u.id, !!u.is_active)}
+                      className={`px-2 py-1 rounded-full text-xs ${u.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}
+                      title={u.is_active ? 'Active - click to deactivate' : 'Inactive - click to activate'}
+                    >
+                      {u.is_active ? 'Active' : 'Inactive'}
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{u.department || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
