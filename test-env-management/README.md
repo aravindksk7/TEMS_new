@@ -1,4 +1,4 @@
-# Test Environment Management System (TEMS)
+# Envify
 
 A comprehensive, enterprise-grade Test Environment Management System built with Next.js, React, Node.js, Express, and MySQL, featuring real-time monitoring, conflict detection, analytics, and collaboration tools.
 
