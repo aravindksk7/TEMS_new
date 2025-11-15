@@ -27,4 +27,7 @@ router.patch('/:id/status', authorizeRoles('admin', 'manager'), bookingControlle
 // Update booking details (manager/admin only)
 router.put('/:id', authorizeRoles('admin', 'manager'), bookingController.updateBooking);
 
+// Delete booking (owner or admin/manager)
+router.delete('/:id', bookingController.deleteBooking);
+
 module.exports = router;

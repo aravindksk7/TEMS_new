@@ -68,6 +68,7 @@ export const bookingAPI = {
   update: (id, data) => api.put(`/bookings/${id}`, data),
   getMyBookings: () => api.get('/bookings/my-bookings'),
   getStatistics: () => api.get('/bookings/statistics'),
+  delete: (id) => api.delete(`/bookings/${id}`),
 };
 
 // Monitoring APIs

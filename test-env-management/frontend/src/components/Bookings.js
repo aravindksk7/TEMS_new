@@ -127,6 +127,22 @@ export default function Bookings({ user }) {
     }
   };
 
+  const handleDelete = async (booking) => {
+    if (!booking) return;
+    const ok = window.confirm('Are you sure you want to delete this booking? This action cannot be undone.');
+    if (!ok) return;
+    try {
+      setActionLoading(true);
+      await bookingAPI.delete(booking.id);
+      toast.success('Booking deleted');
+      fetchBookings();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete booking');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -316,9 +332,7 @@ export default function Bookings({ user }) {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Time</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
-                  {(user?.role === 'admin' || user?.role === 'manager') && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  )}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -334,42 +348,55 @@ export default function Bookings({ user }) {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full priority-${booking.priority}`}>{booking.priority}</span>
                   </td>
-                  {(user?.role === 'admin' || user?.role === 'manager') && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex items-center gap-2">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <div className="flex items-center gap-2">
+                      {/* Admin/manager controls */}
+                      {(user?.role === 'admin' || user?.role === 'manager') && (
+                        <>
+                          <button
+                            onClick={() => openActionModal(booking, 'approve')}
+                            className="px-2 py-1 bg-green-600 text-white rounded text-xs"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => openActionModal(booking, 'reject')}
+                            className="px-2 py-1 bg-red-600 text-white rounded text-xs"
+                          >
+                            Deny
+                          </button>
+                          <button
+                            onClick={() => {
+                              // open edit modal prefilled
+                              setEditingBookingId(booking.id);
+                              setFormData({
+                                environment_id: booking.environment_id,
+                                project_name: booking.project_name,
+                                purpose: booking.purpose || '',
+                                start_time: booking.start_time ? new Date(booking.start_time).toISOString().slice(0,16) : '',
+                                end_time: booking.end_time ? new Date(booking.end_time).toISOString().slice(0,16) : '',
+                                priority: booking.priority || 'medium'
+                              });
+                              setShowModal(true);
+                            }}
+                            className="px-2 py-1 bg-blue-600 text-white rounded text-xs"
+                          >
+                            Edit
+                          </button>
+                        </>
+                      )}
+
+                      {/* Owner delete control (or admin) */}
+                      {(booking.user_id === user?.id || user?.role === 'admin' || user?.role === 'manager') && booking.status !== 'active' && (
                         <button
-                          onClick={() => openActionModal(booking, 'approve')}
-                          className="px-2 py-1 bg-green-600 text-white rounded text-xs"
+                          onClick={() => handleDelete(booking)}
+                          className="px-2 py-1 bg-gray-600 text-white rounded text-xs"
                         >
-                          Approve
+                          Delete
                         </button>
-                        <button
-                          onClick={() => openActionModal(booking, 'reject')}
-                          className="px-2 py-1 bg-red-600 text-white rounded text-xs"
-                        >
-                          Deny
-                        </button>
-                        <button
-                          onClick={() => {
-                            // open edit modal prefilled
-                            setEditingBookingId(booking.id);
-                            setFormData({
-                              environment_id: booking.environment_id,
-                              project_name: booking.project_name,
-                              purpose: booking.purpose || '',
-                              start_time: booking.start_time ? new Date(booking.start_time).toISOString().slice(0,16) : '',
-                              end_time: booking.end_time ? new Date(booking.end_time).toISOString().slice(0,16) : '',
-                              priority: booking.priority || 'medium'
-                            });
-                            setShowModal(true);
-                          }}
-                          className="px-2 py-1 bg-blue-600 text-white rounded text-xs"
-                        >
-                          Edit
-                        </button>
-                      </div>
-                    </td>
-                  )}
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -375,6 +375,44 @@ const bookingController = {
       res.status(500).json({ error: 'Failed to fetch statistics' });
     }
   }
+
+  ,
+
+  // Delete booking (owner or admin/manager)
+  deleteBooking: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const [bookings] = await db.query('SELECT * FROM bookings WHERE id = ?', [id]);
+      if (bookings.length === 0) return res.status(404).json({ error: 'Booking not found' });
+
+      const booking = bookings[0];
+
+      // Only the booking owner or admin/manager may delete
+      if (req.user.id !== booking.user_id && !['admin', 'manager'].includes(req.user.role)) {
+        return res.status(403).json({ error: 'Not authorized to delete this booking' });
+      }
+
+      // Prevent deletion of active bookings
+      if (booking.status === 'active') {
+        return res.status(400).json({ error: 'Cannot delete an active booking' });
+      }
+
+      // Delete booking (will cascade related records where configured)
+      await db.query('DELETE FROM bookings WHERE id = ?', [id]);
+
+      // Log activity
+      await db.query(
+        'INSERT INTO activities (user_id, entity_type, entity_id, action, description) VALUES (?, ?, ?, ?, ?)',
+        [req.user.id, 'booking', id, 'delete', `Deleted booking: ${booking.project_name}`]
+      );
+
+      res.json({ message: 'Booking deleted successfully' });
+    } catch (error) {
+      console.error('Delete booking error:', error);
+      res.status(500).json({ error: 'Failed to delete booking' });
+    }
+  },
 };
 
 module.exports = bookingController;
