@@ -235,6 +235,30 @@ const monitoringController = {
       res.status(500).json({ error: 'Failed to fetch dashboard data' });
     }
   }
+
+  ,
+
+  // Get paginated activities (for dashboard 'load more')
+  getActivities: async (req, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const offset = (page - 1) * limit;
+
+      const [activities] = await db.query(`
+        SELECT a.*, u.full_name as user_name
+        FROM activities a
+        LEFT JOIN users u ON a.user_id = u.id
+        ORDER BY a.created_at DESC
+        LIMIT ? OFFSET ?
+      `, [limit, offset]);
+
+      res.json({ activities, page, limit });
+    } catch (error) {
+      console.error('Get activities error:', error);
+      res.status(500).json({ error: 'Failed to fetch activities' });
+    }
+  }
 };
 
 module.exports = monitoringController;

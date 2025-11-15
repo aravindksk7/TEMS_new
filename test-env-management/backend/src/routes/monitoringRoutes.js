@@ -21,4 +21,7 @@ router.get('/environments/:id/health', monitoringController.getEnvironmentHealth
 // Record metric (admin/manager only)
 router.post('/metrics', authorizeRoles('admin', 'manager'), monitoringController.recordMetric);
 
+// Get paginated activities
+router.get('/activities', monitoringController.getActivities);
+
 module.exports = router;
