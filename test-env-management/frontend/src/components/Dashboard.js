@@ -94,7 +94,13 @@ export default function Dashboard({ user }) {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Dashboard Overview</h2>
-        <p className="text-gray-600 mt-1">Real-time view of your test environment infrastructure</p>
+        <div className="flex items-start justify-between">
+          <p className="text-gray-600 mt-1">Real-time view of your test environment infrastructure</p>
+          <div className="flex gap-2">
+            <button onClick={fetchDashboardData} className="px-3 py-1 bg-gray-100 rounded">Refresh</button>
+            <button onClick={() => { fetchDashboardData(); toast.success('Refreshing dashboard'); }} className="px-3 py-1 bg-blue-600 text-white rounded">Refresh All</button>
+          </div>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -115,10 +121,10 @@ export default function Dashboard({ user }) {
         />
         <StatCard
           title="Unresolved Conflicts"
-          value={stats.conflicts.unresolved_conflicts || 0}
+          value={(stats.conflicts && stats.conflicts.unresolved_conflicts) || 0}
           icon={AlertTriangle}
           color="text-orange-600"
-          subtitle={stats.conflicts.critical_conflicts > 0 ? `${stats.conflicts.critical_conflicts} critical` : 'No critical'}
+          subtitle={(stats.conflicts && stats.conflicts.critical_conflicts > 0) ? `${stats.conflicts.critical_conflicts} critical` : 'No critical'}
         />
         <StatCard
           title="System Health"
@@ -205,17 +211,16 @@ export default function Dashboard({ user }) {
               <p className="text-sm text-gray-500 text-center py-8">No upcoming bookings</p>
             ) : (
               upcomingBookings.map((booking) => (
-                <div key={booking.id} className="flex items-start p-3 bg-gray-50 rounded-lg">
+                <div key={booking.id} className="flex items-start p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer" onClick={() => window.location.href = `/bookings/${booking.id}`}>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">{booking.project_name}</p>
                     <p className="text-xs text-gray-600">{booking.environment_name}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {format(new Date(booking.start_time), 'MMM d, h:mm a')}
-                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{format(new Date(booking.start_time), 'MMM d, h:mm a')}</p>
                   </div>
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full priority-${booking.priority}`}>
-                    {booking.priority}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full priority-${booking.priority}`}>{booking.priority}</span>
+                    <button onClick={(e) => { e.stopPropagation(); window.location.href = `/bookings/${booking.id}`; }} className="px-2 py-1 bg-gray-200 rounded text-xs">View</button>
+                  </div>
                 </div>
               ))
             )}
@@ -239,10 +244,11 @@ export default function Dashboard({ user }) {
               criticalEnvs.map((env) => (
                 <div key={env.id} className="flex items-center p-3 bg-red-50 rounded-lg border border-red-200">
                   <AlertTriangle className="h-5 w-5 text-red-600 mr-3" />
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">{env.name}</p>
                     <p className="text-xs text-gray-600 capitalize">{env.type} Environment</p>
                   </div>
+                  <button onClick={() => window.location.href = `/environments/${env.id}`} className="px-2 py-1 bg-red-600 text-white rounded text-xs">Open</button>
                 </div>
               ))
             )}
