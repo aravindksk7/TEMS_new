@@ -62,7 +62,7 @@ export default function Home() {
   const renderView = () => {
     switch (currentView) {
       case 'dashboard':
-        return <Dashboard user={user} />;
+        return <Dashboard user={user} onViewChange={setCurrentView} />;
       case 'environments':
         return <Environments user={user} />;
       case 'bookings':
@@ -74,7 +74,7 @@ export default function Home() {
       case 'settings':
         return <Settings user={user} />;
       default:
-        return <Dashboard user={user} />;
+        return <Dashboard user={user} onViewChange={setCurrentView} />;
     }
   };
 

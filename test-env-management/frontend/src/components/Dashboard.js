@@ -8,7 +8,7 @@ import { environmentAPI, bookingAPI, monitoringAPI, analyticsAPI } from '@/lib/a
 import { getSocket, onMetricUpdate, offMetricUpdate } from '@/lib/socket';
 import { format } from 'date-fns';
 
-export default function Dashboard({ user }) {
+export default function Dashboard({ user, onViewChange }) {
   const [loading, setLoading] = useState(true);
 
   const [stats, setStats] = useState({ environments: {}, bookings: {}, conflicts: 0 });
@@ -196,7 +196,7 @@ export default function Dashboard({ user }) {
               <p className="text-sm text-gray-500 text-center py-8">No upcoming bookings</p>
             ) : (
               upcomingBookings.map((booking) => (
-                <div key={booking.id} className="flex items-start p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer" onClick={() => window.location.href = `/bookings/${booking.id}`}>
+                <div key={booking.id} className="flex items-start p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer" onClick={() => { /* Navigate to bookings page and filter by booking.id - for now just show toast */ toast.info(`Booking: ${booking.project_name}`); }}>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">{booking.project_name}</p>
                     <p className="text-xs text-gray-600">{booking.environment_name}</p>
@@ -204,7 +204,7 @@ export default function Dashboard({ user }) {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full priority-${booking.priority}`}>{booking.priority}</span>
-                    <button onClick={(e) => { e.stopPropagation(); window.location.href = `/bookings/${booking.id}`; }} className="px-2 py-1 bg-gray-200 rounded text-xs">View</button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); if (onViewChange) onViewChange('bookings'); }} className="px-2 py-1 bg-blue-600 text-white hover:bg-blue-700 rounded text-xs">View</button>
                   </div>
                 </div>
               ))
@@ -227,7 +227,7 @@ export default function Dashboard({ user }) {
                     <p className="text-sm font-medium text-gray-900">{env.name}</p>
                     <p className="text-xs text-gray-600 capitalize">{env.type} Environment</p>
                   </div>
-                  <button onClick={() => window.location.href = `/environments/${env.id}`} className="px-2 py-1 bg-red-600 text-white rounded text-xs">Open</button>
+                  <button type="button" onClick={() => { if (onViewChange) onViewChange('environments'); }} className="px-2 py-1 bg-red-600 text-white hover:bg-red-700 rounded text-xs">Open</button>
                 </div>
               ))
             )}
@@ -243,9 +243,11 @@ export default function Dashboard({ user }) {
           ) : (
             recentActivities.map((activity) => (
               <div key={activity.id} className="flex items-center p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer" onClick={() => {
-                if (activity.entity_type === 'booking') window.location.href = `/bookings/${activity.entity_id}`;
-                else if (activity.entity_type === 'environment') window.location.href = `/environments/${activity.entity_id}`;
-                else if (activity.entity_type === 'user') window.location.href = `/settings/users/${activity.entity_id}`;
+                if (onViewChange) {
+                  if (activity.entity_type === 'booking') onViewChange('bookings');
+                  else if (activity.entity_type === 'environment') onViewChange('environments');
+                  else if (activity.entity_type === 'user') onViewChange('settings');
+                }
               }}>
                 <div className="flex-1">
                   <p className="text-sm text-gray-900">{activity.description}</p>
