@@ -8,7 +8,7 @@ import Bookings from '@/components/Bookings';
 import Monitoring from '@/components/Monitoring';
 import Analytics from '@/components/Analytics';
 import Settings from '@/components/Settings';
-import Login from '@/components/Login';
+import LoginMUI from '@/components/LoginMUI';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import { initSocket } from '@/lib/socket';
@@ -56,7 +56,7 @@ export default function Home() {
   }
 
   if (!user) {
-    return <Login onLogin={handleLogin} />;
+    return <LoginMUI onLogin={handleLogin} />;
   }
 
   const renderView = () => {
