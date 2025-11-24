@@ -149,7 +149,7 @@ CREATE TABLE environment_metrics (
 CREATE TABLE activities (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT,
-    entity_type ENUM('environment', 'booking', 'user', 'system') NOT NULL,
+    entity_type ENUM('environment', 'booking', 'user', 'system', 'component', 'release') NOT NULL,
     entity_id INT,
     action VARCHAR(50) NOT NULL,
     description TEXT,

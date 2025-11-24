@@ -61,10 +61,12 @@ const bookingController = {
       const [bookings] = await db.query(`
         SELECT b.*, 
         e.name as environment_name, e.type as environment_type, e.url as environment_url,
-        u.full_name as user_name, u.email as user_email, u.department
+        u.full_name as user_name, u.email as user_email, u.department,
+        r.name as release_name, r.version as release_version
         FROM bookings b
         JOIN environments e ON b.environment_id = e.id
         JOIN users u ON b.user_id = u.id
+        LEFT JOIN releases r ON b.release_id = r.id
         WHERE b.id = ?
       `, [id]);
 
@@ -100,7 +102,7 @@ const bookingController = {
   // Create booking with conflict detection
   createBooking: async (req, res) => {
     try {
-      const { environment_id, project_name, purpose, start_time, end_time, priority } = req.body;
+      const { environment_id, release_id, project_name, purpose, start_time, end_time, priority } = req.body;
 
       if (!environment_id || !start_time || !end_time) {
         return res.status(400).json({ error: 'Environment, start time, and end time are required' });
@@ -133,9 +135,9 @@ const bookingController = {
 
       // Create booking
       const [result] = await db.query(
-        `INSERT INTO bookings (environment_id, user_id, project_name, purpose, start_time, end_time, priority, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [environment_id, req.user.id, project_name, purpose, start_time, end_time, priority || 'medium', 'pending']
+        `INSERT INTO bookings (environment_id, user_id, release_id, project_name, purpose, start_time, end_time, priority, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [environment_id, req.user.id, release_id || null, project_name, purpose, start_time, end_time, priority || 'medium', 'pending']
       );
 
       const bookingId = result.insertId;
@@ -272,7 +274,7 @@ const bookingController = {
   updateBooking: async (req, res) => {
     try {
       const { id } = req.params;
-      const { environment_id, project_name, purpose, start_time, end_time, priority } = req.body;
+      const { environment_id, release_id, project_name, purpose, start_time, end_time, priority } = req.body;
 
       const [bookings] = await db.query('SELECT * FROM bookings WHERE id = ?', [id]);
       if (bookings.length === 0) {
@@ -300,6 +302,7 @@ const bookingController = {
       const fields = [];
       const params = [];
       if (environment_id !== undefined) { fields.push('environment_id = ?'); params.push(environment_id); }
+      if (release_id !== undefined) { fields.push('release_id = ?'); params.push(release_id); }
       if (project_name !== undefined) { fields.push('project_name = ?'); params.push(project_name); }
       if (purpose !== undefined) { fields.push('purpose = ?'); params.push(purpose); }
       if (start_time !== undefined) { fields.push('start_time = ?'); params.push(start_time); }
