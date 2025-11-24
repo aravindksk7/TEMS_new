@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Dashboard from '@/components/Dashboard';
 import Environments from '@/components/Environments';
 import Bookings from '@/components/Bookings';
-import Monitoring from '@/components/Monitoring';
+import MonitoringMUI from '@/components/MonitoringMUI';
 import Analytics from '@/components/Analytics';
 import Settings from '@/components/Settings';
 import LoginMUI from '@/components/LoginMUI';
@@ -68,7 +68,7 @@ export default function Home() {
       case 'bookings':
         return <Bookings user={user} />;
       case 'monitoring':
-        return <Monitoring user={user} />;
+        return <MonitoringMUI user={user} />;
       case 'analytics':
         return <Analytics user={user} />;
       case 'settings':
