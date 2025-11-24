@@ -43,6 +43,7 @@ import {
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
+import { PickersDay } from '@mui/x-date-pickers/PickersDay';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import dayjs from 'dayjs';
 import { monitoringAPI, analyticsAPI, bookingAPI } from '@/lib/api';
@@ -334,15 +335,16 @@ export default function MonitoringMUI({ user }) {
                     value={selectedDate}
                     onChange={(newValue) => setSelectedDate(newValue)}
                     slots={{
-                      day: (props) => {
-                        const bookings = getBookingsForDate(props.day);
+                      day: (dayProps) => {
+                        const bookings = getBookingsForDate(dayProps.day);
+                        const hasBookings = bookings.length > 0;
                         return (
                           <Badge
-                            badgeContent={bookings.length || null}
+                            badgeContent={hasBookings ? bookings.length : null}
                             color="primary"
                             overlap="circular"
                           >
-                            <Box {...props} />
+                            <PickersDay {...dayProps} />
                           </Badge>
                         );
                       }
