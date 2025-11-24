@@ -422,28 +422,32 @@ export default function Bookings({ user }) {
                           >
                             Deny
                           </button>
-                          <button
-                            onClick={() => {
-                              // open edit modal prefilled
-                              setEditingBookingId(booking.id);
-                              setFormData({
-                                environment_id: booking.environment_id,
-                                project_name: booking.project_name,
-                                purpose: booking.purpose || '',
-                                start_time: booking.start_time ? new Date(booking.start_time).toISOString().slice(0,16) : '',
-                                end_time: booking.end_time ? new Date(booking.end_time).toISOString().slice(0,16) : '',
-                                priority: booking.priority || 'medium'
-                              });
-                              setShowModal(true);
-                            }}
-                            className="px-2 py-1 bg-blue-600 text-white rounded text-xs"
-                          >
-                            Edit
-                          </button>
                         </>
                       )}
 
-                      {/* Owner delete control (or admin) */}
+                      {/* Edit button - only owner or admin/manager */}
+                      {(booking.user_id === user?.id || user?.role === 'admin' || user?.role === 'manager') && (
+                        <button
+                          onClick={() => {
+                            // open edit modal prefilled
+                            setEditingBookingId(booking.id);
+                            setFormData({
+                              environment_id: booking.environment_id,
+                              project_name: booking.project_name,
+                              purpose: booking.purpose || '',
+                              start_time: booking.start_time ? new Date(booking.start_time).toISOString().slice(0,16) : '',
+                              end_time: booking.end_time ? new Date(booking.end_time).toISOString().slice(0,16) : '',
+                              priority: booking.priority || 'medium'
+                            });
+                            setShowModal(true);
+                          }}
+                          className="px-2 py-1 bg-blue-600 text-white rounded text-xs"
+                        >
+                          Edit
+                        </button>
+                      )}
+
+                      {/* Owner delete control (or admin/manager) - cannot delete active bookings */}
                       {(booking.user_id === user?.id || user?.role === 'admin' || user?.role === 'manager') && booking.status !== 'active' && (
                         <button
                           onClick={() => openDeleteModal(booking, user?.role === 'admin')}

@@ -277,6 +277,13 @@ const bookingController = {
         return res.status(404).json({ error: 'Booking not found' });
       }
 
+      const booking = bookings[0];
+
+      // Only the booking owner or admin/manager may update
+      if (req.user.id !== booking.user_id && !['admin', 'manager'].includes(req.user.role)) {
+        return res.status(403).json({ error: 'Not authorized to update this booking' });
+      }
+
       // Validate times if provided
       if (start_time && end_time && new Date(start_time) >= new Date(end_time)) {
         return res.status(400).json({ error: 'End time must be after start time' });

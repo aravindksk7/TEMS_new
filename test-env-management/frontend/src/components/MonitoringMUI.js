@@ -172,6 +172,11 @@ export default function MonitoringMUI({ user }) {
     });
   };
 
+  const canModifyBooking = (booking) => {
+    // User can modify if they own the booking or are admin/manager
+    return booking.user_id === user.id || ['admin', 'manager'].includes(user.role);
+  };
+
   const getSeverityColor = (severity) => {
     switch (severity) {
       case 'critical': return 'error';
@@ -393,22 +398,24 @@ export default function MonitoringMUI({ user }) {
                                   />
                                 </Box>
                               </Box>
-                              <Box>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => openEditBooking(booking)}
-                                  color="primary"
-                                >
-                                  <Edit />
-                                </IconButton>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleDeleteBooking(booking.id)}
-                                  color="error"
-                                >
-                                  <Delete />
-                                </IconButton>
-                              </Box>
+                              {canModifyBooking(booking) && (
+                                <Box>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => openEditBooking(booking)}
+                                    color="primary"
+                                  >
+                                    <Edit />
+                                  </IconButton>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleDeleteBooking(booking.id)}
+                                    color="error"
+                                  >
+                                    <Delete />
+                                  </IconButton>
+                                </Box>
+                              )}
                             </Box>
                           </CardContent>
                         </Card>
