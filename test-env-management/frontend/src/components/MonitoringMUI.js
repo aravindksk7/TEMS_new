@@ -448,7 +448,7 @@ export default function MonitoringMUI({ user }) {
         )}
 
         {activeTab === 3 && (
-          <Box>
+          <Box sx={{ height: 'calc(100vh - 200px)', overflow: 'auto' }}>
             {releaseLoading ? (
               <Box display="flex" justifyContent="center" py={4}>
                 <CircularProgress />
@@ -460,13 +460,13 @@ export default function MonitoringMUI({ user }) {
                   <Card>
                     <CardContent>
                       <Typography variant="h6" mb={3}>Release Status by Environment</Typography>
-                      <ResponsiveContainer width="100%" height={450}>
-                        <BarChart data={releaseStats.environmentStats || []}>
+                      <ResponsiveContainer width="100%" height={550}>
+                        <BarChart data={releaseStats.environmentStats || []} margin={{ top: 20, right: 30, left: 20, bottom: 100 }}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="environment_name" angle={-45} textAnchor="end" height={100} />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
+                          <XAxis dataKey="environment_name" angle={-45} textAnchor="end" height={120} fontSize={12} />
+                          <YAxis fontSize={12} />
+                          <Tooltip contentStyle={{ fontSize: 14 }} />
+                          <Legend wrapperStyle={{ paddingTop: '20px' }} />
                           <Bar dataKey="passed" stackId="a" fill="#4caf50" name="Passed" />
                           <Bar dataKey="in_progress" stackId="a" fill="#2196f3" name="In Progress" />
                           <Bar dataKey="failed" stackId="a" fill="#f44336" name="Failed" />
@@ -480,48 +480,53 @@ export default function MonitoringMUI({ user }) {
 
                 {/* Release Status Distribution */}
                 <Grid item xs={12} md={6}>
-                  <Card sx={{ height: '100%' }}>
-                    <CardContent>
+                  <Card sx={{ height: '550px' }}>
+                    <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                       <Typography variant="h6" mb={2}>Release Status Distribution</Typography>
-                      <ResponsiveContainer width="100%" height={400}>
-                        <PieChart>
-                          <Pie
-                            data={releaseStats.statusDistribution || []}
-                            dataKey="count"
-                            nameKey="status"
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={120}
-                            label={(entry) => `${entry.status}: ${entry.count}`}
-                          >
-                            {(releaseStats.statusDistribution || []).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={releaseStats.statusDistribution || []}
+                              dataKey="count"
+                              nameKey="status"
+                              cx="50%"
+                              cy="50%"
+                              outerRadius={140}
+                              label={(entry) => `${entry.status}: ${entry.count}`}
+                              labelLine={true}
+                            >
+                              {(releaseStats.statusDistribution || []).map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </Box>
                     </CardContent>
                   </Card>
                 </Grid>
 
                 {/* Release Timeline */}
                 <Grid item xs={12} md={6}>
-                  <Card sx={{ height: '100%' }}>
-                    <CardContent>
+                  <Card sx={{ height: '550px' }}>
+                    <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                       <Typography variant="h6" mb={2}>Release Timeline (Last 6 Months)</Typography>
-                      <ResponsiveContainer width="100%" height={400}>
-                        <LineChart data={releaseStats.timeline || []}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Line type="monotone" dataKey="completed" stroke="#4caf50" name="Completed" strokeWidth={2} />
-                          <Line type="monotone" dataKey="deployed" stroke="#2196f3" name="Deployed" strokeWidth={2} />
-                          <Line type="monotone" dataKey="testing" stroke="#ff9800" name="Testing" strokeWidth={2} />
-                        </LineChart>
-                      </ResponsiveContainer>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={releaseStats.timeline || []} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" fontSize={12} />
+                            <YAxis fontSize={12} />
+                            <Tooltip contentStyle={{ fontSize: 14 }} />
+                            <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                            <Line type="monotone" dataKey="completed" stroke="#4caf50" name="Completed" strokeWidth={3} dot={{ r: 5 }} />
+                            <Line type="monotone" dataKey="deployed" stroke="#2196f3" name="Deployed" strokeWidth={3} dot={{ r: 5 }} />
+                            <Line type="monotone" dataKey="testing" stroke="#ff9800" name="Testing" strokeWidth={3} dot={{ r: 5 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </Box>
                     </CardContent>
                   </Card>
                 </Grid>

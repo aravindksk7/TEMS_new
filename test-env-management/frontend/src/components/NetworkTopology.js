@@ -345,8 +345,8 @@ export default function NetworkTopology({ user }) {
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={9}>
-          <Card>
-            <CardContent>
+          <Card sx={{ height: 'calc(100vh - 180px)' }}>
+            <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                 <Typography variant="h6">Network Graph</Typography>
                 <Box>
@@ -364,8 +364,8 @@ export default function NetworkTopology({ user }) {
               <Box
                 sx={{
                   width: '100%',
-                  height: 'calc(100vh - 350px)',
-                  minHeight: '500px',
+                  flexGrow: 1,
+                  minHeight: '600px',
                   border: '1px solid #e0e0e0',
                   borderRadius: 1,
                   overflow: 'hidden',
@@ -397,7 +397,7 @@ export default function NetworkTopology({ user }) {
 
         <Grid item xs={12} md={3}>
           {selectedNode ? (
-            <Card>
+            <Card sx={{ height: 'calc(100vh - 180px)', overflow: 'auto' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   {selectedNode.type === 'environment' ? 'Environment' : 'Component'} Details
@@ -459,7 +459,7 @@ export default function NetworkTopology({ user }) {
               </CardContent>
             </Card>
           ) : (
-            <Card>
+            <Card sx={{ height: 'calc(100vh - 180px)' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   Statistics
