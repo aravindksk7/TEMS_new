@@ -85,6 +85,28 @@ CREATE TABLE environment_components (
     INDEX idx_status (deployment_status)
 );
 
+-- Releases table (must be before bookings table due to foreign key)
+CREATE TABLE releases (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    version VARCHAR(50) NOT NULL,
+    release_type ENUM('major', 'minor', 'patch', 'hotfix') DEFAULT 'minor',
+    status ENUM('planned', 'in-progress', 'testing', 'ready', 'deployed', 'completed', 'cancelled') DEFAULT 'planned',
+    description TEXT,
+    release_notes TEXT,
+    target_date DATE,
+    actual_release_date DATE NULL,
+    release_manager_id INT,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (release_manager_id) REFERENCES users(id),
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    INDEX idx_status (status),
+    INDEX idx_target_date (target_date),
+    INDEX idx_version (version)
+);
+
 -- Bookings/Reservations table
 CREATE TABLE bookings (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -235,28 +257,6 @@ CREATE TABLE environment_permissions (
     CHECK (user_id IS NOT NULL OR team_id IS NOT NULL)
 );
 
--- Releases table
-CREATE TABLE releases (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL,
-    version VARCHAR(50) NOT NULL,
-    release_type ENUM('major', 'minor', 'patch', 'hotfix') DEFAULT 'minor',
-    status ENUM('planned', 'in-progress', 'testing', 'ready', 'deployed', 'completed', 'cancelled') DEFAULT 'planned',
-    description TEXT,
-    release_notes TEXT,
-    target_date DATE,
-    actual_release_date DATE NULL,
-    release_manager_id INT,
-    created_by INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (release_manager_id) REFERENCES users(id),
-    FOREIGN KEY (created_by) REFERENCES users(id),
-    INDEX idx_status (status),
-    INDEX idx_target_date (target_date),
-    INDEX idx_version (version)
-);
-
 -- Release-Environment junction table
 CREATE TABLE release_environments (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -264,6 +264,9 @@ CREATE TABLE release_environments (
     environment_id INT NOT NULL,
     test_phase ENUM('unit', 'integration', 'system', 'uat', 'regression', 'performance', 'security') NOT NULL,
     status ENUM('pending', 'in-progress', 'passed', 'failed', 'blocked', 'skipped') DEFAULT 'pending',
+    deployment_status ENUM('pending', 'deploying', 'deployed', 'successful', 'failed', 'rolled_back') DEFAULT 'pending',
+    deployed_at TIMESTAMP NULL,
+    deployed_by INT NULL,
     use_case TEXT,
     configuration JSON,
     test_start_date DATETIME NULL,
@@ -277,6 +280,7 @@ CREATE TABLE release_environments (
     FOREIGN KEY (release_id) REFERENCES releases(id) ON DELETE CASCADE,
     FOREIGN KEY (environment_id) REFERENCES environments(id) ON DELETE CASCADE,
     FOREIGN KEY (assigned_to) REFERENCES users(id),
+    FOREIGN KEY (deployed_by) REFERENCES users(id),
     UNIQUE KEY unique_release_env_phase (release_id, environment_id, test_phase),
     INDEX idx_release (release_id),
     INDEX idx_environment (environment_id),
@@ -297,6 +301,20 @@ CREATE TABLE release_components (
     UNIQUE KEY unique_release_component (release_id, component_id),
     INDEX idx_release (release_id),
     INDEX idx_component (component_id)
+);
+
+-- Integration Settings table
+CREATE TABLE integration_settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    integration_type ENUM('jira', 'gitlab', 'github', 'slack') NOT NULL,
+    settings JSON NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_integration (user_id, integration_type),
+    INDEX idx_user (user_id),
+    INDEX idx_type (integration_type)
 );
 
 -- Insert default admin user (password: Admin@123)

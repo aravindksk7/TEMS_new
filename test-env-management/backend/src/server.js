@@ -18,6 +18,8 @@ const collaborationRoutes = require('./routes/collaborationRoutes');
 const diagnosticRoutes = require('./routes/diagnosticRoutes');
 const componentRoutes = require('./routes/componentRoutes');
 const releaseRoutes = require('./routes/releaseRoutes');
+const integrationRoutes = require('./routes/integrationRoutes');
+const deploymentTrackingRoutes = require('./routes/deploymentTrackingRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -54,6 +56,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/diagnostic', diagnosticRoutes);
 app.use('/api/components', componentRoutes);
 app.use('/api/releases', releaseRoutes);
+app.use('/api/integrations', integrationRoutes);
+app.use('/api/deployment-tracking', deploymentTrackingRoutes);
 app.use('/api', collaborationRoutes);
 
 // Socket.io for real-time updates

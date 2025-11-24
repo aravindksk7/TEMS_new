@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutDashboard, Server, Calendar, Activity, Network, BarChart3, Settings, Rocket } from 'lucide-react';
+import { LayoutDashboard, Server, Calendar, Activity, Network, BarChart3, Settings, Rocket, Plug, GitBranch } from 'lucide-react';
 
 export default function Sidebar({ currentView, onViewChange, user }) {
   const navigation = [
@@ -10,6 +10,8 @@ export default function Sidebar({ currentView, onViewChange, user }) {
     { id: 'monitoring', name: 'Monitoring', icon: Activity },
     { id: 'network', name: 'Network', icon: Network },
     { id: 'releases', name: 'Releases', icon: Rocket },
+    { id: 'integrations', name: 'Integrations', icon: Plug },
+    { id: 'deployment-tracking', name: 'Deployment Tracking', icon: GitBranch },
     { id: 'analytics', name: 'Analytics', icon: BarChart3 },
     { id: 'settings', name: 'Settings', icon: Settings },
   ];
