@@ -35,7 +35,8 @@ import {
   Refresh,
   ZoomIn,
   ZoomOut,
-  CenterFocusStrong
+  CenterFocusStrong,
+  Close
 } from '@mui/icons-material';
 import * as d3 from 'd3';
 import { componentAPI, environmentAPI } from '@/lib/api';
@@ -68,19 +69,19 @@ export default function NetworkTopology({ user }) {
 
   useEffect(() => {
     fetchData();
-    // Set up interval to refresh network data every 10 seconds
-    const interval = setInterval(fetchData, 10000);
-    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     if (networkData.nodes.length > 0) {
       renderNetwork();
     }
-    
+  }, [networkData]);
+
+  useEffect(() => {
     // Add window resize listener for responsive graph
     const handleResize = () => {
       if (networkData.nodes.length > 0) {
+        // Force re-render on resize
         renderNetwork();
       }
     };
@@ -337,17 +338,51 @@ export default function NetworkTopology({ user }) {
           >
             Deploy Component
           </Button>
-          <IconButton onClick={fetchData} color="primary">
+          <IconButton onClick={fetchData} color="primary" title="Refresh Data">
             <Refresh />
           </IconButton>
         </Box>
       </Box>
 
+      {/* Statistics Row */}
+      <Grid container spacing={2} mb={2}>
+        <Grid item xs={12} md={4}>
+          <Card elevation={2}>
+            <CardContent sx={{ py: 2 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="subtitle1" color="primary" fontWeight={600}>Environments</Typography>
+                <Typography variant="h4" fontWeight={700} color="primary">{environments.length}</Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Card elevation={2}>
+            <CardContent sx={{ py: 2 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="subtitle1" color="secondary" fontWeight={600}>Components</Typography>
+                <Typography variant="h4" fontWeight={700} color="secondary">{components.length}</Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Card elevation={2}>
+            <CardContent sx={{ py: 2 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="subtitle1" color="success.main" fontWeight={600}>Connections</Typography>
+                <Typography variant="h4" fontWeight={700} color="success.main">{networkData.links.length}</Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
       <Grid container spacing={3}>
-        <Grid item xs={12} md={9}>
-          <Card sx={{ height: 'calc(100vh - 180px)' }}>
-            <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Grid item xs={12} md={selectedNode ? 10 : 12}>
+          <Card sx={{ height: 'calc(100vh - 280px)' }}>
+            <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                 <Typography variant="h6">Network Graph</Typography>
                 <Box>
                   <IconButton size="small" onClick={handleZoomIn} title="Zoom In">
@@ -365,7 +400,6 @@ export default function NetworkTopology({ user }) {
                 sx={{
                   width: '100%',
                   flexGrow: 1,
-                  minHeight: '600px',
                   border: '1px solid #e0e0e0',
                   borderRadius: 1,
                   overflow: 'hidden',
@@ -379,9 +413,9 @@ export default function NetworkTopology({ user }) {
                   style={{ display: 'block' }}
                 />
               </Box>
-              <Box mt={2} display="flex" gap={2} flexWrap="wrap">
-                <Chip label="Environment" sx={{ bgcolor: '#2196f3', color: 'white' }} />
-                <Chip label="Component" sx={{ bgcolor: '#009688', color: 'white' }} />
+              <Box mt={1.5} display="flex" gap={2} flexWrap="wrap" justifyContent="center">
+                <Chip label="Environment" size="small" sx={{ bgcolor: '#2196f3', color: 'white' }} />
+                <Chip label="Component" size="small" sx={{ bgcolor: '#009688', color: 'white' }} />
                 <Box display="flex" alignItems="center" gap={1}>
                   <Box width={30} height={3} bgcolor="#4caf50" />
                   <Typography variant="caption">Deployed</Typography>
@@ -395,13 +429,18 @@ export default function NetworkTopology({ user }) {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={3}>
-          {selectedNode ? (
-            <Card sx={{ height: 'calc(100vh - 180px)', overflow: 'auto' }}>
+        {selectedNode && (
+          <Grid item xs={12} md={2}>
+            <Card sx={{ height: 'calc(100vh - 280px)', overflow: 'auto' }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  {selectedNode.type === 'environment' ? 'Environment' : 'Component'} Details
-                </Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                  <Typography variant="h6">
+                    {selectedNode.type === 'environment' ? 'Environment' : 'Component'} Details
+                  </Typography>
+                  <IconButton size="small" onClick={() => setSelectedNode(null)}>
+                    <Close />
+                  </IconButton>
+                </Box>
                 <Box mt={2}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     Name
@@ -458,45 +497,8 @@ export default function NetworkTopology({ user }) {
                 </Box>
               </CardContent>
             </Card>
-          ) : (
-            <Card sx={{ height: 'calc(100vh - 180px)' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Statistics
-                </Typography>
-                <Box mt={2}>
-                  <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography variant="body2" color="text.secondary">
-                      Environments
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {environments.length}
-                    </Typography>
-                  </Box>
-                  <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography variant="body2" color="text.secondary">
-                      Components
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {components.length}
-                    </Typography>
-                  </Box>
-                  <Box display="flex" justifyContent="space-between">
-                    <Typography variant="body2" color="text.secondary">
-                      Connections
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {networkData.links.length}
-                    </Typography>
-                  </Box>
-                </Box>
-                <Typography variant="body2" color="text.secondary" mt={3}>
-                  Click on a node to view details. Drag nodes to rearrange the layout.
-                </Typography>
-              </CardContent>
-            </Card>
-          )}
-        </Grid>
+          </Grid>
+        )}
       </Grid>
 
       {/* Create Component Modal */}
