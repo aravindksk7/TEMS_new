@@ -77,6 +77,16 @@ export default function NetworkTopology({ user }) {
     if (networkData.nodes.length > 0) {
       renderNetwork();
     }
+    
+    // Add window resize listener for responsive graph
+    const handleResize = () => {
+      if (networkData.nodes.length > 0) {
+        renderNetwork();
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [networkData]);
 
   const fetchData = async () => {
@@ -354,7 +364,8 @@ export default function NetworkTopology({ user }) {
               <Box
                 sx={{
                   width: '100%',
-                  height: '600px',
+                  height: 'calc(100vh - 350px)',
+                  minHeight: '500px',
                   border: '1px solid #e0e0e0',
                   borderRadius: 1,
                   overflow: 'hidden',

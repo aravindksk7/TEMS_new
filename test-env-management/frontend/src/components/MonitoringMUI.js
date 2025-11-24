@@ -460,7 +460,7 @@ export default function MonitoringMUI({ user }) {
                   <Card>
                     <CardContent>
                       <Typography variant="h6" mb={3}>Release Status by Environment</Typography>
-                      <ResponsiveContainer width="100%" height={350}>
+                      <ResponsiveContainer width="100%" height={450}>
                         <BarChart data={releaseStats.environmentStats || []}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="environment_name" angle={-45} textAnchor="end" height={100} />
@@ -480,10 +480,10 @@ export default function MonitoringMUI({ user }) {
 
                 {/* Release Status Distribution */}
                 <Grid item xs={12} md={6}>
-                  <Card>
+                  <Card sx={{ height: '100%' }}>
                     <CardContent>
                       <Typography variant="h6" mb={2}>Release Status Distribution</Typography>
-                      <ResponsiveContainer width="100%" height={300}>
+                      <ResponsiveContainer width="100%" height={400}>
                         <PieChart>
                           <Pie
                             data={releaseStats.statusDistribution || []}
@@ -491,7 +491,7 @@ export default function MonitoringMUI({ user }) {
                             nameKey="status"
                             cx="50%"
                             cy="50%"
-                            outerRadius={100}
+                            outerRadius={120}
                             label={(entry) => `${entry.status}: ${entry.count}`}
                           >
                             {(releaseStats.statusDistribution || []).map((entry, index) => (
@@ -507,19 +507,19 @@ export default function MonitoringMUI({ user }) {
 
                 {/* Release Timeline */}
                 <Grid item xs={12} md={6}>
-                  <Card>
+                  <Card sx={{ height: '100%' }}>
                     <CardContent>
                       <Typography variant="h6" mb={2}>Release Timeline (Last 6 Months)</Typography>
-                      <ResponsiveContainer width="100%" height={300}>
+                      <ResponsiveContainer width="100%" height={400}>
                         <LineChart data={releaseStats.timeline || []}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="month" />
                           <YAxis />
                           <Tooltip />
                           <Legend />
-                          <Line type="monotone" dataKey="completed" stroke="#4caf50" name="Completed" />
-                          <Line type="monotone" dataKey="deployed" stroke="#2196f3" name="Deployed" />
-                          <Line type="monotone" dataKey="testing" stroke="#ff9800" name="Testing" />
+                          <Line type="monotone" dataKey="completed" stroke="#4caf50" name="Completed" strokeWidth={2} />
+                          <Line type="monotone" dataKey="deployed" stroke="#2196f3" name="Deployed" strokeWidth={2} />
+                          <Line type="monotone" dataKey="testing" stroke="#ff9800" name="Testing" strokeWidth={2} />
                         </LineChart>
                       </ResponsiveContainer>
                     </CardContent>
