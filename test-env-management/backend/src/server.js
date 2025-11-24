@@ -16,6 +16,8 @@ const monitoringRoutes = require('./routes/monitoringRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const collaborationRoutes = require('./routes/collaborationRoutes');
 const diagnosticRoutes = require('./routes/diagnosticRoutes');
+const componentRoutes = require('./routes/componentRoutes');
+const releaseRoutes = require('./routes/releaseRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -50,6 +52,8 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/diagnostic', diagnosticRoutes);
+app.use('/api/components', componentRoutes);
+app.use('/api/releases', releaseRoutes);
 app.use('/api', collaborationRoutes);
 
 // Socket.io for real-time updates

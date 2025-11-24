@@ -2,17 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { Calendar, Plus, X } from 'lucide-react';
-import { bookingAPI, environmentAPI } from '@/lib/api';
+import { bookingAPI, environmentAPI, releaseAPI } from '@/lib/api';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
 export default function Bookings({ user }) {
   const [bookings, setBookings] = useState([]);
   const [environments, setEnvironments] = useState([]);
+  const [releases, setReleases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     environment_id: '',
+    release_id: '',
     project_name: '',
     purpose: '',
     start_time: '',
@@ -27,6 +29,7 @@ export default function Bookings({ user }) {
   useEffect(() => {
     fetchBookings();
     fetchEnvironments();
+    fetchReleases();
   }, []);
 
   const fetchBookings = async () => {
@@ -52,6 +55,15 @@ export default function Bookings({ user }) {
       setEnvironments(response.data.environments);
     } catch (error) {
       console.error('Failed to fetch environments');
+    }
+  };
+
+  const fetchReleases = async () => {
+    try {
+      const response = await releaseAPI.getAll({});
+      setReleases(response.data.releases || []);
+    } catch (error) {
+      console.error('Failed to fetch releases');
     }
   };
 
@@ -92,6 +104,7 @@ export default function Bookings({ user }) {
       setEditingBookingId(null);
       setFormData({
         environment_id: '',
+        release_id: '',
         project_name: '',
         purpose: '',
         start_time: '',
@@ -179,7 +192,7 @@ export default function Bookings({ user }) {
             <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white">
               <h3 className="text-lg font-semibold">{editingBookingId ? 'Edit Booking' : 'Create New Booking'}</h3>
               <button
-                onClick={() => { setShowModal(false); setEditingBookingId(null); setFormData({ environment_id: '', project_name: '', purpose: '', start_time: '', end_time: '', priority: 'medium' }); }}
+                onClick={() => { setShowModal(false); setEditingBookingId(null); setFormData({ environment_id: '', release_id: '', project_name: '', purpose: '', start_time: '', end_time: '', priority: 'medium' }); }}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <X className="h-5 w-5" />
@@ -203,6 +216,22 @@ export default function Bookings({ user }) {
                   {environments.map((env) => (
                     <option key={env.id} value={env.id}>
                       {env.name} ({env.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Release (Optional)</label>
+                <select
+                  value={formData.release_id}
+                  onChange={(e) => setFormData({ ...formData, release_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">No release associated</option>
+                  {releases.map((release) => (
+                    <option key={release.id} value={release.id}>
+                      {release.name} v{release.version} - {release.status}
                     </option>
                   ))}
                 </select>
@@ -433,6 +462,7 @@ export default function Bookings({ user }) {
                             setEditingBookingId(booking.id);
                             setFormData({
                               environment_id: booking.environment_id,
+                              release_id: booking.release_id || '',
                               project_name: booking.project_name,
                               purpose: booking.purpose || '',
                               start_time: booking.start_time ? new Date(booking.start_time).toISOString().slice(0,16) : '',

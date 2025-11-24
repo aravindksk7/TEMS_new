@@ -6,6 +6,8 @@ import Dashboard from '@/components/Dashboard';
 import Environments from '@/components/Environments';
 import Bookings from '@/components/Bookings';
 import MonitoringMUI from '@/components/MonitoringMUI';
+import NetworkTopology from '@/components/NetworkTopology';
+import ReleasesMUI from '@/components/ReleasesMUI';
 import Analytics from '@/components/Analytics';
 import Settings from '@/components/Settings';
 import LoginMUI from '@/components/LoginMUI';
@@ -69,6 +71,10 @@ export default function Home() {
         return <Bookings user={user} />;
       case 'monitoring':
         return <MonitoringMUI user={user} />;
+      case 'network':
+        return <NetworkTopology user={user} />;
+      case 'releases':
+        return <ReleasesMUI user={user} />;
       case 'analytics':
         return <Analytics user={user} />;
       case 'settings':

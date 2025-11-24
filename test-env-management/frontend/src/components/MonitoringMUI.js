@@ -46,8 +46,9 @@ import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { PickersDay } from '@mui/x-date-pickers/PickersDay';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import dayjs from 'dayjs';
-import { monitoringAPI, analyticsAPI, bookingAPI } from '@/lib/api';
+import { monitoringAPI, analyticsAPI, bookingAPI, releaseAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 
 export default function MonitoringMUI({ user }) {
   const [dashboard, setDashboard] = useState(null);
@@ -59,6 +60,10 @@ export default function MonitoringMUI({ user }) {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [calendarBookings, setCalendarBookings] = useState([]);
   const [editBookingModal, setEditBookingModal] = useState({ visible: false, booking: null });
+  const [releaseStats, setReleaseStats] = useState(null);
+  const [releaseLoading, setReleaseLoading] = useState(false);
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
   useEffect(() => {
     fetchMonitoring();
@@ -69,6 +74,7 @@ export default function MonitoringMUI({ user }) {
   useEffect(() => {
     if (activeTab === 1) fetchConflicts();
     if (activeTab === 2) fetchCalendarBookings();
+    if (activeTab === 3) fetchReleaseStats();
   }, [activeTab, selectedDate]);
 
   const fetchMonitoring = async () => {
@@ -102,6 +108,18 @@ export default function MonitoringMUI({ user }) {
       setCalendarBookings(resp.data.bookings || []);
     } catch (err) {
       console.error('Failed to fetch calendar bookings', err);
+    }
+  };
+
+  const fetchReleaseStats = async () => {
+    try {
+      setReleaseLoading(true);
+      const response = await releaseAPI.getStatistics();
+      setReleaseStats(response.data);
+    } catch (err) {
+      console.error('Failed to fetch release statistics', err);
+    } finally {
+      setReleaseLoading(false);
     }
   };
 
@@ -219,6 +237,7 @@ export default function MonitoringMUI({ user }) {
             <Tab icon={<Timeline />} label="Dashboard" />
             <Tab icon={<Warning />} label="Conflicts" />
             <Tab icon={<CalendarMonth />} label="Calendar" />
+            <Tab icon={<Timeline />} label="Releases" />
           </Tabs>
         </Paper>
 
@@ -426,6 +445,145 @@ export default function MonitoringMUI({ user }) {
               </Card>
             </Grid>
           </Grid>
+        )}
+
+        {activeTab === 3 && (
+          <Box>
+            {releaseLoading ? (
+              <Box display="flex" justifyContent="center" py={4}>
+                <CircularProgress />
+              </Box>
+            ) : releaseStats ? (
+              <Grid container spacing={3}>
+                {/* Environment Stats */}
+                <Grid item xs={12}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" mb={3}>Release Status by Environment</Typography>
+                      <ResponsiveContainer width="100%" height={350}>
+                        <BarChart data={releaseStats.environmentStats || []}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="environment_name" angle={-45} textAnchor="end" height={100} />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="passed" stackId="a" fill="#4caf50" name="Passed" />
+                          <Bar dataKey="in_progress" stackId="a" fill="#2196f3" name="In Progress" />
+                          <Bar dataKey="failed" stackId="a" fill="#f44336" name="Failed" />
+                          <Bar dataKey="blocked" stackId="a" fill="#ff9800" name="Blocked" />
+                          <Bar dataKey="not_started" stackId="a" fill="#9e9e9e" name="Not Started" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Release Status Distribution */}
+                <Grid item xs={12} md={6}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" mb={2}>Release Status Distribution</Typography>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={releaseStats.statusDistribution || []}
+                            dataKey="count"
+                            nameKey="status"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={100}
+                            label={(entry) => `${entry.status}: ${entry.count}`}
+                          >
+                            {(releaseStats.statusDistribution || []).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Release Timeline */}
+                <Grid item xs={12} md={6}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" mb={2}>Release Timeline (Last 6 Months)</Typography>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={releaseStats.timeline || []}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="month" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Line type="monotone" dataKey="completed" stroke="#4caf50" name="Completed" />
+                          <Line type="monotone" dataKey="deployed" stroke="#2196f3" name="Deployed" />
+                          <Line type="monotone" dataKey="testing" stroke="#ff9800" name="Testing" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Active Releases Table */}
+                <Grid item xs={12}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" mb={2}>Active Releases</Typography>
+                      <TableContainer>
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Release</TableCell>
+                              <TableCell>Version</TableCell>
+                              <TableCell>Status</TableCell>
+                              <TableCell>Target Date</TableCell>
+                              <TableCell align="right">Environments</TableCell>
+                              <TableCell align="right">Passed</TableCell>
+                              <TableCell align="right">Failed</TableCell>
+                              <TableCell align="right">Testing</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {(releaseStats.activeReleases || []).map((release) => (
+                              <TableRow key={release.id} hover>
+                                <TableCell>{release.name}</TableCell>
+                                <TableCell>{release.version}</TableCell>
+                                <TableCell>
+                                  <Chip label={release.release_status} size="small" />
+                                </TableCell>
+                                <TableCell>
+                                  {release.target_date 
+                                    ? dayjs(release.target_date).format('MMM D, YYYY')
+                                    : '-'
+                                  }
+                                </TableCell>
+                                <TableCell align="right">{release.environments_count || 0}</TableCell>
+                                <TableCell align="right">
+                                  <Chip label={release.passed_count || 0} size="small" color="success" />
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Chip label={release.failed_count || 0} size="small" color="error" />
+                                </TableCell>
+                                <TableCell align="right">
+                                  <Chip label={release.testing_count || 0} size="small" color="info" />
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            ) : (
+              <Typography color="text.secondary" align="center" py={4}>
+                No release data available
+              </Typography>
+            )}
+          </Box>
         )}
 
         {/* Resolve Conflict Dialog */}

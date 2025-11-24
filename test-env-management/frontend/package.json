@@ -16,6 +16,7 @@
     "@mui/material-nextjs": "^7.3.5",
     "@mui/x-date-pickers": "^8.19.0",
     "axios": "^1.6.2",
+    "d3": "^7.9.0",
     "date-fns": "^3.0.6",
     "dayjs": "^1.11.19",
     "lucide-react": "^0.294.0",

@@ -9,10 +9,12 @@ const bookingController = {
       let query = `
         SELECT b.*, 
         e.name as environment_name, e.type as environment_type,
-        u.full_name as user_name, u.email as user_email
+        u.full_name as user_name, u.email as user_email,
+        r.name as release_name, r.version as release_version
         FROM bookings b
         JOIN environments e ON b.environment_id = e.id
         JOIN users u ON b.user_id = u.id
+        LEFT JOIN releases r ON b.release_id = r.id
         WHERE 1=1
       `;
       const params = [];

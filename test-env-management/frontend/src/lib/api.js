@@ -108,4 +108,31 @@ export const commentAPI = {
   delete: (id) => api.delete(`/comments/${id}`),
 };
 
+// Component APIs
+export const componentAPI = {
+  getAll: (params) => api.get('/components', { params }),
+  getById: (id) => api.get(`/components/${id}`),
+  create: (data) => api.post('/components', data),
+  update: (id, data) => api.put(`/components/${id}`, data),
+  delete: (id) => api.delete(`/components/${id}`),
+  deploy: (data) => api.post('/components/deploy', data),
+  removeDeployment: (environmentId, componentId) => api.delete(`/components/deploy/${environmentId}/${componentId}`),
+  getNetworkTopology: () => api.get('/components/network-topology'),
+};
+
+// Release APIs
+export const releaseAPI = {
+  getAll: (params) => api.get('/releases', { params }),
+  getById: (id) => api.get(`/releases/${id}`),
+  create: (data) => api.post('/releases', data),
+  update: (id, data) => api.put(`/releases/${id}`, data),
+  delete: (id) => api.delete(`/releases/${id}`),
+  associateEnvironment: (data) => api.post('/releases/environments', data),
+  updateReleaseEnvironment: (id, data) => api.put(`/releases/environments/${id}`, data),
+  removeEnvironment: (releaseId, environmentId) => api.delete(`/releases/environments/${releaseId}/${environmentId}`),
+  associateComponent: (data) => api.post('/releases/components', data),
+  removeComponent: (releaseId, componentId) => api.delete(`/releases/components/${releaseId}/${componentId}`),
+  getStatistics: () => api.get('/releases/statistics'),
+};
+
 export default api;
